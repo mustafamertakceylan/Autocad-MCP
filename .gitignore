@@ -1,0 +1,23 @@
+# Ajanların yerel geçici dosyaları ve günlükleri
+tmp/
+*.log
+
+# Kimlik bilgileri ve yerel ortam
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+.DS_Store
+Thumbs.db
+
+# İleride oluşabilecek derleme ve bağımlılık çıktıları
+node_modules/
+dist/
+build/
+.vs/
+*.user
+*.suo
+DerivedData/

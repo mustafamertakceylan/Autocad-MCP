@@ -1,0 +1,44 @@
+# Autocad MCP — ajan kuralları
+
+Standart kaynak: https://github.com/mustafamertakceylan/ajan-standardi
+Yerel standart kopyası: `docs/standart/`; sürüm kaydı: `docs/standart/KAYNAK.md`.
+
+Göreve başlamadan `docs/standart/ortak/KURALLAR.md` ve `docs/standart/ortak/USLUP.md` okunur. Yönetici ayrıca `docs/standart/roller/YONETICI.md`, uygulayıcı `docs/standart/roller/UYGULAYICI.md` okur. Görevle ilgili dersler `docs/standart/ders-kitabi.md` içindedir. Bu dosya yalnız projeye özel kararları ve daha dar kapsamı belirler.
+
+## Proje
+- Ad: Autocad MCP. GitHub depo adı: `Autocad-MCP`; görünürlük **private**.
+- Çalışma klasörü: `C:\Dev\Other Projects\Autocad MCP`.
+- Hedef: Her kullanıcının bilgisayarında yerel çalışan, tam AutoCAD 2027 ile MCP istemcileri arasında köprü; Windows ve macOS.
+- Yeni 2B/3B çizim ve mevcut çizimi inceleme/düzenleme birlikte hedeflenir.
+- Mimari yönü: dış TypeScript MCP sunucusu, içeride ortak C++/ObjectARX kaynaklarından platforma özel derlenen eklenti. Uygulanabilirlik henüz gerçek AutoCAD ile doğrulanmadı.
+- Kullanıcı iletişimi ve proje belgeleri Türkçe; MCP araç metinlerinin dili uygulama öncesinde netleştirilecek.
+- Commit dili bu yeni depo için Türkçe; kapsamlar: `init`, `agents`, `plan`, `docs`, ileride `bridge`, `plugin`, `mcp`, `installer`.
+
+## Güncel kapsam kilidi
+- **Şu an yalnız depo kurulumu, araştırma ve planlama belgeleri yetkilidir. Kodlamaya başlanmayacak.**
+- Kaynak kodu, yürütülebilir betik, bağımlılık kurulumu, paket manifesti, CI iş akışı, AutoCAD bağlantısı, SDK kurulumu ve uygulama derlemesi bu işin kapsamında yok.
+- Bu kurulum işi için yönetici private depoyu oluşturur ve yalnız denetlenen plan/kural belgelerini ilk commit ile kaydeder. Bu izin sonraki geliştirme işlerine aktarılmaz.
+- Uygulayıcılar commit/push yapamaz. Görev dosyası proje kökünde, rapor hemen oluşturulur. Biten görev ve rapor `docs/arsiv/` altında saklanır.
+- Depo kullanıcı açıkça istemeden public yapılmaz; GitHub Pages, Release ve paket yayını yok.
+
+## Komutlar ve doğrulama
+- Kurulum/geliştirme/tür denetimi/lint/test komutları henüz yok; **çalıştırılmadı**.
+- Sır taraması betiği yok. Yönetici ilk commit öncesinde staged diff'i anahtar, token, şifre, bağlantı dizesi ve ortam dosyaları için inceler. Betik eklemek ayrı onay gerektirir.
+- Belgeler için bağlantı, kapsam, şablon ve dosya listesi kontrolü yapılır; uygulama testi sayılmaz.
+
+## İzole test ortamı
+- Henüz kurulmadı. Gelecekte yalnız sahte veya açık örnek çizimlerin kopyaları kullanılacak.
+- Gerçek müşteri çizimleri, anahtarlar ve kullanıcıya ait üretim dosyaları bu depoya alınmaz.
+- Veritabanı, ödeme, e-posta/SMS ve merkezi bulut hizmeti mevcut kapsamda yok.
+
+## Yayın ve Mac
+- Şu an ürün yayını veya VDS yok; `YAYIN_KURALLARI.md` ve `YAYIN_GUNLUGU.md` uygulanabilir aşamada hazırlanacak.
+- Mac derlemesi ve canlı testi ileride gerekir. Kullanıcı o iş için uygunluk/onay vermeden Mac'e bağlanılmaz.
+- SDK koşullarını kabul etmek, hesap açmak, ödeme ve imzalama hesabı işlemleri kullanıcıya aittir.
+
+## Kasıtlı kararlar ve açık noktalar
+- Kullanıcı yerel köprü istiyor; zorunlu merkezi sunucu/hesap planlanmıyor. AI istemcisinin buluta veri göndermesi ayrı veri akışıdır.
+- Hedef ileride kurulabilir açık kaynak ürün; **şu an depo private**. Apache-2.0 yalnız öneridir; lisans seçimi henüz onaylanmadı ve LICENSE eklenmez.
+- Bütün özellikler hedefi, platform/API ve gerçek test durumuyla raporlanır; serbest komut/LISP erişimi tam test kapsamı sayılmaz.
+- Mac işlemci mimarisi belirtilmedi. HTTP/uzak bağlantı, gelişmiş LISP, paketleme ve sürüm desteği ayrıntıları plan önerisidir.
+- Önceki `C:\Dev\Other Projects\AutoCAD-MCP` araştırma klasörü korunur; bu projenin kökü değildir.
