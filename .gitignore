@@ -1,5 +1,7 @@
 # Ajanların yerel geçici dosyaları ve günlükleri
 tmp/
+runtime/
+**/pairing.json
 *.log
 
 # Kimlik bilgileri ve yerel ortam
