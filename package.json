@@ -1,0 +1,25 @@
+{
+  "name": "autocad-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local MCP bridge for AutoCAD 2027",
+  "engines": { "node": ">=24" },
+  "bin": { "autocad-mcp": "dist/src/main.js" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "test:live:windows": "npm run build && node dist/test/live-windows.js",
+    "start": "node dist/src/main.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.1",
+    "@types/node": "24.10.0",
+    "typescript": "7.0.2"
+  }
+}
