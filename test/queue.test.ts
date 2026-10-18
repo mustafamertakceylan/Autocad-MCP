@@ -55,3 +55,34 @@ test('queued calls never silently switch to a replacement pairing', async () => 
     assert.equal(plugin.calls(), 1);
   } finally { await plugin.close(); await cleanupFixture(plugin.folder); }
 });
+
+
+test('control status bypasses saturated work queue; sent abort requests native cancellation', async () => {
+  const plugin = await mockPlugin({ hang: true, control: true });
+  try {
+    const bridge = new BridgeClient(plugin.grantFile, 2000, 1), abort = new AbortController();
+    const params = { instanceId: plugin.grant.instanceId, documentId: 'doc-1', documentEpoch: 1, operationId: 'op-1' };
+    const pending = assert.rejects(bridge.call('acad_create_line', params, abort.signal), { code: 'TIMEOUT_UNKNOWN' });
+    await started(plugin);
+    const live = await bridge.call('acad_get_operation_status', params);
+    assert.equal(live.backend, 'mock');
+    assert.equal(plugin.calls(), 2);
+    abort.abort(); await pending;
+    for(let i = 0; i < 50 && !plugin.cancellations(); i++) await pause(10);
+    assert.equal(plugin.cancellations(), 1);
+    assert.equal(plugin.calls(), 3, 'No retry of original mutation');
+  } finally { await plugin.close(); await cleanupFixture(plugin.folder); }
+});
+
+test('revoked pairing prevents status access while active work is pending', async () => {
+  const plugin = await mockPlugin({ hang: true, control: true });
+  try {
+    const bridge = new BridgeClient(plugin.grantFile, 2000), abort = new AbortController();
+    const pending = assert.rejects(bridge.call('acad_create_line', { instanceId: plugin.grant.instanceId }, abort.signal), { code: 'TIMEOUT_UNKNOWN' });
+    await started(plugin);
+    await writeFile(plugin.grantFile, JSON.stringify({ ...plugin.grant, operations: [] }));
+    await assert.rejects(bridge.call('acad_get_operation_status', { instanceId: plugin.grant.instanceId }), { code: 'SECURITY_DENIED' });
+    abort.abort(); await pending; await pause(30);
+    assert.equal(plugin.calls(), 1);
+  } finally { await plugin.close(); await cleanupFixture(plugin.folder); }
+});

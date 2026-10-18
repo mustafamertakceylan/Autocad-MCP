@@ -14,23 +14,25 @@ export async function cleanupFixture(folder: string): Promise<void> {
   await rm(actual, { recursive: true });
 }
 
-export async function mockPlugin(options: { wrongSignature?: boolean; hang?: boolean } = {}) {
+export async function mockPlugin(options: { wrongSignature?: boolean; hang?: boolean; control?: boolean; wrongVersion?: boolean } = {}) {
   const folder = await mkdtemp(join(tmpdir(), 'autocad-mcp-test-')); await chmod(folder, 0o700);
   const key = randomBytes(16).toString('hex');
   const grant: Grant = { bridgeVersion: '0.1.0', instanceId: 'mock-' + key, endpoint: process.platform === 'win32' ? `\\\\.\\pipe\\autocad-mcp-${key}` : join(folder, 'bridge.sock'), secret: randomBytes(32).toString('hex'), backend: 'mock', expiresAt: Date.now() + 60000, operations: toolNames };
-  const sockets = new Set<Socket>(); let calls = 0; let mutations = 0;
+  if (options.control) grant.controlEndpoint = grant.endpoint + '-control';
+  const sockets = new Set<Socket>(); let calls = 0; let mutations = 0; let cancellations = 0;
   const records = new Map<string, { fingerprint: string; result: object }>();
-  const server: Server = createServer(socket => {
+  const accept = (socket: Socket, control = false) => {
     sockets.add(socket); socket.on('close', () => sockets.delete(socket)); socket.on('error', () => {});
     const nonce = randomBytes(32).toString('hex'); const frames = new FrameReader();
-    socket.write(JSON.stringify({ nonce, instanceId: grant.instanceId, bridgeVersion: '0.1.0' }) + '\n');
+    socket.write(JSON.stringify({ nonce, instanceId: grant.instanceId, bridgeVersion: options.wrongVersion ? '9.0.0' : '0.1.0' }) + '\n');
     socket.on('data', (chunk: Buffer) => {
       try {
         for (const line of frames.push(chunk)) {
           const p = JSON.parse(line) as { nonce: string; body: string; mac: string };
           if (p.nonce !== nonce || !authenticate(sign(grant.secret, 'request', nonce, p.body), p.mac)) { socket.destroy(); return; }
           const req = decodeBody(p.body) as { method: ToolName; params: Record<string, unknown> }; calls++;
-          if (options.hang) return;
+          if (req.method as string === 'bridge.cancel') cancellations++;
+          if (options.hang && !control) return;
           let result: object = { backend: 'mock', simulation: true, connected: true, instanceId: grant.instanceId };
           if (req.method === 'acad_list_documents') result = { documents: [{ documentId: 'doc-1', documentEpoch: 1, revision: mutations, insunits: 4 }] };
           if (req.method.startsWith('acad_create_')) {
@@ -45,8 +47,11 @@ export async function mockPlugin(options: { wrongSignature?: boolean; hang?: boo
         }
       } catch { socket.destroy(); }
     });
-  });
+  };
+  const server: Server = createServer(socket => accept(socket));
+  const controller = options.control ? createServer(socket => accept(socket, true)) : undefined;
+  if (controller) await new Promise<void>((ok, fail) => { controller.once('error', fail); controller.listen(grant.controlEndpoint!, ok); });
   await new Promise<void>((ok, fail) => { server.once('error', fail); server.listen(grant.endpoint, ok); });
   const grantFile = join(folder, 'pairing.json'); await writeFile(grantFile, JSON.stringify(grant), { mode: 0o600 });
-  return { grant, grantFile, folder, calls: () => calls, mutations: () => mutations, close: async () => { for (const socket of sockets) socket.destroy(); await new Promise<void>(ok => server.close(() => ok())); } };
+  return { grant, grantFile, folder, calls: () => calls, mutations: () => mutations, cancellations: () => cancellations, close: async () => { for (const socket of sockets) socket.destroy(); await new Promise<void>(ok => server.close(() => ok())); if(controller) await new Promise<void>(ok => controller.close(() => ok())); } };
 }

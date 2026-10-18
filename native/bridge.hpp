@@ -37,13 +37,13 @@ class Runtime {
     void stop();
 
   private:
-    void run();
+    void run(std::uintptr_t handle, bool control);
     std::function<json(const json &)> handler_;
     std::filesystem::path directory_, grant_file_;
-    std::string instance_, endpoint_, secret_;
+    std::string instance_, endpoint_, control_endpoint_, secret_;
     std::int64_t expires_at_ = 0;
     std::vector<std::string> operations_;
     std::atomic<bool> stopping_{false};
-    std::thread thread_;
+    std::vector<std::thread> threads_;
 };
 } // namespace mcp

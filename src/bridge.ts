@@ -7,7 +7,7 @@ import { mutating, type ToolName } from './tools.js';
 
 export const grantSchema = z.strictObject({
   bridgeVersion: z.literal(BRIDGE_VERSION), instanceId: z.string().min(1).max(128),
-  endpoint: z.string().min(1).max(4096), secret: z.string().regex(/^[a-f0-9]{64}$/),
+  endpoint: z.string().min(1).max(4096), controlEndpoint: z.string().min(1).max(4096).optional(), secret: z.string().regex(/^[a-f0-9]{64}$/),
   backend: z.enum(['objectarx', 'mock']), expiresAt: z.number().int().positive(),
   operations: z.array(z.string()).max(32)
 });
@@ -22,6 +22,7 @@ export async function readGrant(path: string): Promise<Grant> {
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 16384) throw new BridgeError('IPC_AUTH_FAILED', 'Invalid pairing file');
   if (process.platform !== 'win32' && ((stat.mode & 0o077) || stat.uid !== process.getuid?.())) throw new BridgeError('IPC_AUTH_FAILED', 'Pairing file must be private');
   const grant = grantSchema.parse(JSON.parse(await readFile(path, 'utf8')));
+  if (grant.controlEndpoint && grant.controlEndpoint !== grant.endpoint + '-control') throw new BridgeError('IPC_AUTH_FAILED', 'Invalid control endpoint');
   if (grant.expiresAt <= Date.now()) throw new BridgeError('IPC_AUTH_FAILED', 'Pairing expired');
   if (process.platform === 'win32') {
     if (!/^\\\\\.\\pipe\\autocad-mcp-[a-zA-Z0-9_-]{1,128}$/.test(grant.endpoint)) throw new BridgeError('IPC_AUTH_FAILED', 'Invalid local pipe');
@@ -37,13 +38,15 @@ export class BridgeClient {
   private readonly queue: PendingCall[] = [];
   private active = false;
   private admitted = 0;
+  private controls = 0;
   constructor(private readonly grantFile?: string, private readonly timeoutMs = 10000, private readonly maxPending = 64) {
     if (!Number.isSafeInteger(maxPending) || maxPending < 1 || maxPending > 1024) throw new Error('Invalid queue capacity');
   }
   async call(name: ToolName, params: Record<string, unknown>, signal?: AbortSignal): Promise<Record<string, unknown>> {
     // Reserve before asynchronous file I/O as well as before the native call queue.
-    if (this.admitted >= this.maxPending) throw new BridgeError('DOC_BUSY', 'Local bridge queue is full');
-    this.admitted++;
+    const status = name === 'acad_get_operation_status' || (name as string) === 'bridge.test_probe';
+    if (status ? this.controls >= 4 : this.admitted >= this.maxPending) throw new BridgeError('DOC_BUSY', 'Local bridge queue is full');
+    if (status) this.controls++; else this.admitted++;
     try {
       if (signal?.aborted) throw new BridgeError('CANCELLED', 'Call cancelled before submission');
       if (!this.grantFile) {
@@ -57,6 +60,7 @@ export class BridgeClient {
       if (params.instanceId !== grant.instanceId) throw new BridgeError('INSTANCE_NOT_FOUND', 'Instance does not match pairing');
       if (!grant.operations.includes(name)) throw new BridgeError('SECURITY_DENIED', 'Operation not granted');
       if (signal?.aborted) throw new BridgeError('CANCELLED', 'Call cancelled before submission');
+      if (status && grant.controlEndpoint) return await this.rpc(grant, name, params, signal, true);
       return await new Promise<Record<string, unknown>>((resolveResult, reject) => {
         const entry: PendingCall = { grant, name, params, signal, resolve: resolveResult, reject, abort: () => {
           const index = this.queue.indexOf(entry);
@@ -69,7 +73,7 @@ export class BridgeClient {
         signal?.addEventListener('abort', entry.abort, { once: true });
         this.drain();
       });
-    } finally { this.admitted--; }
+    } finally { if (status) this.controls--; else this.admitted--; }
   }
 
   private drain(): void {
@@ -86,22 +90,36 @@ export class BridgeClient {
     let current: Grant;
     try { current = await readGrant(this.grantFile!); }
     catch { throw new BridgeError('IPC_AUTH_FAILED', 'Pairing revoked, expired or unavailable'); }
-    if (current.instanceId !== entry.grant.instanceId || current.endpoint !== entry.grant.endpoint || current.secret !== entry.grant.secret || current.backend !== entry.grant.backend) throw new BridgeError('IPC_AUTH_FAILED', 'Pairing changed while queued');
+    if (current.instanceId !== entry.grant.instanceId || current.endpoint !== entry.grant.endpoint || current.controlEndpoint !== entry.grant.controlEndpoint || current.secret !== entry.grant.secret || current.backend !== entry.grant.backend) throw new BridgeError('IPC_AUTH_FAILED', 'Pairing changed while queued');
     if (!current.operations.includes(entry.name)) throw new BridgeError('SECURITY_DENIED', 'Operation grant revoked while queued');
     return this.rpc(current, entry.name, entry.params, entry.signal);
   }
 
-  private rpc(grant: Grant, name: ToolName, params: Record<string, unknown>, signal?: AbortSignal): Promise<Record<string, unknown>> {
+  private async cancel(grant: Grant, params: Record<string, unknown>): Promise<void> {
+    if (!grant.controlEndpoint || !this.grantFile) return;
+    try {
+      const current = await readGrant(this.grantFile);
+      if (current.instanceId !== grant.instanceId || current.secret !== grant.secret || current.controlEndpoint !== grant.controlEndpoint) return;
+      const { instanceId, documentId, documentEpoch, operationId } = params;
+      if (!current.operations.includes('acad_get_operation_status') || !operationId || !documentId || !documentEpoch) return;
+      await this.rpc(current, 'bridge.cancel', { instanceId, documentId, documentEpoch, operationId }, undefined, true, 750);
+    } catch { /* Cancellation is best effort; only terminal native evidence proves rollback. */ }
+  }
+
+  private rpc(grant: Grant, name: ToolName | 'bridge.cancel', params: Record<string, unknown>, signal?: AbortSignal, control = false, timeout = this.timeoutMs): Promise<Record<string, unknown>> {
     return new Promise((resolveResult, reject) => {
-      const socket = connect(grant.endpoint); const frames = new FrameReader(); let sent = false; let done = false; let nonce = '';
+      const socket = connect(control ? grant.controlEndpoint! : grant.endpoint); const frames = new FrameReader(); let sent = false; let done = false; let nonce = '';
       const fail = (code: string, message: string) => { if (!done) { done = true; cleanup(); socket.destroy(); reject(new BridgeError(code, message)); } };
-      const interrupted = () => fail(sent && mutating.has(name) ? 'TIMEOUT_UNKNOWN' : 'IPC_UNAVAILABLE', 'Call interrupted; reconcile mutations before retry');
-      const aborted = () => fail(sent && mutating.has(name) ? 'TIMEOUT_UNKNOWN' : 'CANCELLED', 'Call cancelled; reconcile sent mutations before retry');
-      const timer = setTimeout(interrupted, this.timeoutMs);
+      const interrupted = () => fail(sent && mutating.has(name as ToolName) ? 'TIMEOUT_UNKNOWN' : 'IPC_UNAVAILABLE', 'Call interrupted; reconcile mutations before retry');
+      const aborted = () => {
+        if (sent && mutating.has(name as ToolName)) void this.cancel(grant, params);
+        fail(sent && mutating.has(name as ToolName) ? 'TIMEOUT_UNKNOWN' : 'CANCELLED', 'Call cancelled; reconcile sent mutations before retry');
+      };
+      const timer = setTimeout(interrupted, timeout);
       const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', aborted); };
       if (signal?.aborted) { aborted(); return; }
       signal?.addEventListener('abort', aborted, { once: true });
-      socket.on('error', (error: NodeJS.ErrnoException) => fail(sent && mutating.has(name) ? 'TIMEOUT_UNKNOWN' : 'IPC_UNAVAILABLE', `Local IPC failed (${error.code ?? 'UNKNOWN'})`));
+      socket.on('error', (error: NodeJS.ErrnoException) => fail(sent && mutating.has(name as ToolName) ? 'TIMEOUT_UNKNOWN' : 'IPC_UNAVAILABLE', `Local IPC failed (${error.code ?? 'UNKNOWN'})`));
       socket.on('end', () => { if (!done) interrupted(); });
       socket.on('data', (chunk: Buffer) => {
         try {
@@ -121,7 +139,7 @@ export class BridgeClient {
               done = true; cleanup(); socket.destroy(); resolveResult(response.result);
             }
           }
-        } catch { fail(sent && mutating.has(name) ? 'TIMEOUT_UNKNOWN' : 'IPC_AUTH_FAILED', 'Invalid or unauthenticated IPC response'); }
+        } catch { fail(sent && mutating.has(name as ToolName) ? 'TIMEOUT_UNKNOWN' : 'IPC_AUTH_FAILED', 'Invalid or unauthenticated IPC response'); }
       });
     });
   }

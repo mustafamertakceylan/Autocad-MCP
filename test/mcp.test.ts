@@ -20,6 +20,10 @@ test('official SDK client exercises actual stdio process and paired IPC backend'
     assert.equal((status.structuredContent as Record<string, unknown>).simulation, true);
     const error = await client.callTool({ name: 'acad_get_status', arguments: { instanceId: 'wrong' } });
     assert.equal(error.isError, true);
+    const unresolved = await client.callTool({ name: 'acad_get_operation_status', arguments: { instanceId: 'wrong', documentId: 'doc-1', documentEpoch: 1, operationId: 'unknown-op' } });
+    assert.equal(unresolved.isError, true);
+    assert.equal((unresolved.structuredContent as Record<string, unknown>).status, 'unknown');
+    assert.equal((unresolved.structuredContent as Record<string, unknown>).applied, null, 'Status transport/auth failure cannot prove original mutation had no effect');
     assert.equal(stderr.includes(plugin.grant.secret), false);
   } finally { await client.close(); await plugin.close(); await cleanupFixture(plugin.folder); }
 });

@@ -66,3 +66,12 @@ test('cancellation before send has no effect; after send preserves unknown mutat
     assert.equal(plugin.calls(), 1);
   } finally { await plugin.close(); await cleanupFixture(plugin.folder); }
 });
+
+
+test('incompatible handshake is rejected before any mutation submission', async () => {
+  const plugin = await mockPlugin({ wrongVersion: true });
+  try {
+    await assert.rejects(new BridgeClient(plugin.grantFile).call('acad_create_line', { instanceId: plugin.grant.instanceId }), { code: 'IPC_AUTH_FAILED' });
+    assert.equal(plugin.calls(), 0);
+  } finally { await plugin.close(); await cleanupFixture(plugin.folder); }
+});

@@ -1,4 +1,5 @@
 #include "bridge.hpp"
+#include "jobs.hpp"
 #include <windows.h>
 #include "rxregsvc.h"
 #include "aced.h"
@@ -30,6 +31,9 @@ void need(bool value, const char *code = "VALIDATION_FAILED", const char *messag
         throw Failure{code, message};
 }
 void cad(Acad::ErrorStatus status) {
+    if (status == Acad::eLockViolation || status == Acad::eLockChangeInProgress ||
+        status == Acad::eLockConflict || status == Acad::eVetoed)
+        throw Failure{"DOC_BUSY", "Document lock is unavailable"};
     need(status == Acad::eOk, "EXECUTION_FAILED", "AutoCAD API rejected operation");
 }
 std::wstring wide(const std::string &value) {
@@ -133,7 +137,33 @@ DocState &state(AcDbDatabase *db) {
 
 std::unique_ptr<mcp::Runtime> runtime;
 std::filesystem::path output_root;
-std::map<std::string, std::pair<std::string, json>> operations;
+std::unique_ptr<mcp::Jobs> jobs;
+bool rollback_uncertain = false;
+std::atomic<bool> *current_cancel = nullptr; // Only the CAD thread reads this pointer.
+void check_cancel() {
+    need(runtime && GetFileAttributesW(runtime->grant_file().c_str()) != INVALID_FILE_ATTRIBUTES,
+         "IPC_AUTH_FAILED", "Pairing revoked before transaction commit");
+    need(!current_cancel || !current_cancel->load(), "CANCELLED", "Transaction cancelled before commit");
+}
+#ifdef AUTOCAD_MCP_TESTING
+std::string next_fault;
+bool test_abort_uncertain = false;
+void test_fault(const char *point) {
+    if (next_fault != point)
+        return;
+    next_fault.clear();
+    if (std::string(point).starts_with("delay")) {
+        for (int i = 0; i < 100; ++i) {
+            Sleep(10);
+            if (std::string(point) == "delay_before_commit")
+                check_cancel();
+        }
+    } else
+        throw Failure{"EXECUTION_FAILED", "Synthetic fault injection"};
+}
+#else
+void test_fault(const char *) {}
+#endif
 struct Cursor {
     std::string document, signature;
     std::uint64_t epoch, revision;
@@ -183,8 +213,16 @@ struct Transaction {
         need(manager && manager->startTransaction(), "EXECUTION_FAILED", "Cannot start transaction");
     }
     ~Transaction() {
-        if (active)
-            manager->abortTransaction();
+        if (active) {
+            if (manager->abortTransaction() != Acad::eOk)
+                rollback_uncertain = true;
+#ifdef AUTOCAD_MCP_TESTING
+            if (test_abort_uncertain) {
+                test_abort_uncertain = false;
+                rollback_uncertain = true;
+            }
+#endif
+        }
     }
     template <class T> T *get(AcDbObjectId id, AcDb::OpenMode mode = AcDb::kForRead) {
         T *value = nullptr;
@@ -197,6 +235,10 @@ struct Transaction {
         active = false;
     }
 };
+
+#ifdef AUTOCAD_MCP_TESTING
+std::unique_ptr<Transaction> synthetic_outer_transaction;
+#endif
 
 double drawing_metres(AcDbDatabase *db) {
     switch (static_cast<int>(db->insunits())) {
@@ -294,6 +336,8 @@ void writable_entity(AcDbDatabase *db, AcDbEntity *e) {
 }
 
 void validate(const std::string &method, const json &p) {
+    need(runtime && GetFileAttributesW(runtime->grant_file().c_str()) != INVALID_FILE_ATTRIBUTES,
+         "IPC_AUTH_FAILED", "Pairing revoked before CAD execution");
     static const std::map<std::string, std::set<std::string>> fields = {
         {"acad_get_status", {"instanceId"}},
         {"acad_get_capabilities", {"instanceId", "documentId", "documentEpoch"}},
@@ -387,8 +431,13 @@ struct DocumentContext {
         need(doc != nullptr, "DOC_NOT_FOUND", "Drawing is not open");
         need(state(doc->database()).epoch == number(p, "documentEpoch"), "STALE_DOCUMENT",
              "Drawing epoch changed");
+        if (writing)
+            need(!doc->isReadOnly(), "DOC_READ_ONLY", "Drawing is read only");
         previous = acDocManager->curDocument();
         if (acDocManager->isApplicationContext()) {
+            const auto main_window = adsw_acadMainWnd();
+            need(!main_window || IsWindowEnabled(main_window), "DOC_BUSY",
+                 "AutoCAD has an active modal window");
             need(doc->isQuiescent() || test_pumping, "DOC_BUSY", "Drawing is busy");
             cad(acDocManager->lockDocument(doc, writing ? AcAp::kWrite : AcAp::kRead, nullptr, nullptr,
                                            false));
@@ -488,7 +537,7 @@ json query(AcDbDatabase *db, const json &p) {
     AcDbBlockTableRecordIterator *raw = nullptr;
     cad(record->newIterator(raw));
     std::unique_ptr<AcDbBlockTableRecordIterator> iter(raw);
-    std::size_t index = 0, scanned = 0;
+    std::size_t index = 0, scanned = 0, response_bytes = 2;
     json items = json::array();
     for (; !iter->done() && (index < offset || scanned < 10000); iter->step(), ++index) {
         if (index < offset)
@@ -500,12 +549,14 @@ json query(AcDbDatabase *db, const json &p) {
             (filter.contains("layer") && layer_name(e) != filter.at("layer").get<std::string>()))
             continue;
         auto candidate = project(geometry(e, f), p);
-        if (items.dump().size() + candidate.dump().size() > 350000) {
+        const auto candidate_bytes = candidate.dump().size() + 1;
+        if (response_bytes + candidate_bytes > 350000) {
             need(!items.empty(), "VALIDATION_FAILED", "Entity exceeds response budget");
             scanned--;
             break;
         }
         items.push_back(candidate);
+        response_bytes += candidate_bytes;
         if (items.size() >= limit) {
             iter->step();
             index++;
@@ -633,6 +684,7 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
     include(result, identity(db));
     std::vector<AcDbObjectId> verify;
     std::vector<std::string> new_boxes;
+    check_cancel();
     s.writing = true;
     try {
         if (created) {
@@ -657,6 +709,7 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
         } else {
             auto delta = method == "acad_move_entities" ? point(p, "delta", f) : AcGePoint3d::kOrigin;
             for (auto entity : selected) {
+                check_cancel();
                 auto er = ref(db, entity);
                 if (method == "acad_move_entities") {
                     cad(entity->transformBy(AcGeMatrix3d::translation(delta - AcGePoint3d::kOrigin)));
@@ -668,6 +721,16 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
                 verify.push_back(entity->objectId());
             }
         }
+#ifdef AUTOCAD_MCP_TESTING
+        if (next_fault == "abort_unconfirmed") {
+            next_fault.clear();
+            test_abort_uncertain = true;
+            throw Failure{"EXECUTION_FAILED", "Synthetic unconfirmed rollback"};
+        }
+#endif
+        test_fault("abort_before_commit");
+        test_fault("delay_before_commit");
+        check_cancel();
         tx.commit();
         s.writing = false;
         s.revision++;
@@ -689,6 +752,8 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
     }
     result["revision"] = s.revision;
     try {
+        test_fault("verify_after_commit");
+        test_fault("delay_after_commit");
         Transaction read(db);
         json values = json::array();
         const double out = method == "acad_erase_entities" ? 1 : output_factor(db, p);
@@ -839,7 +904,14 @@ json save_copy(AcDbDatabase *db, const json &p) {
         need(copy != nullptr, "EXECUTION_FAILED", "Snapshot creation failed");
         cad(copy->saveAs(temporary.c_str(), false));
         copy.reset();
+#ifdef AUTOCAD_MCP_TESTING
+        if (next_fault == "source_side_effect") {
+            next_fault.clear();
+            cad(db->setInsunits(static_cast<AcDb::UnitsValue>(6)));
+        }
+#endif
         AcDbDatabase reopened(false, true);
+        test_fault("reopen_failure");
         cad(reopened.readDwgFile(temporary.c_str(), AcDbDatabase::kForReadAndAllShare, false));
         cad(reopened.closeInput(true));
         need(entity_count(&reopened) == count && reopened.insunits() == original_units, "VERIFICATION_FAILED",
@@ -848,7 +920,7 @@ json save_copy(AcDbDatabase *db, const json &p) {
              "Reopened geometry differs from source");
         need(std::wstring(acDocManager->curDocument()->fileName()) == original_name &&
                  dbmod() == original_dirty && db->insunits() == original_units,
-             "VERIFICATION_FAILED", "Source state changed during snapshot");
+             "PARTIAL_APPLY", "Source state changed during snapshot; no output was published");
         result = {{"operationId", text(p, "operationId")},
                   {"status", "succeeded"},
                   {"applied", true},
@@ -866,6 +938,7 @@ json save_copy(AcDbDatabase *db, const json &p) {
                     {"scope", "LINE/CIRCLE/3DSOLID modelspace geometry, count and INSUNITS"},
                     {"otherDrawingDataVerified", false}}}};
         include(result, identity(db));
+        check_cancel();
         // Prepare the response before publishing, so allocation failures cannot hide a written file.
         if (!MoveFileExW(temporary.c_str(), destination.c_str(), MOVEFILE_WRITE_THROUGH)) {
             auto code = GetLastError();
@@ -874,11 +947,23 @@ json save_copy(AcDbDatabase *db, const json &p) {
                           "Output publication failed"};
         }
         published = true;
+        test_fault("delay_after_publish");
     } catch (...) {
         std::error_code ignored;
         if (!published)
             std::filesystem::remove(temporary, ignored);
         std::filesystem::remove(staging, ignored);
+        if (published) {
+            result["status"] = "partial";
+            result["verified"] = false;
+            result["error"] = {{"code", "PARTIAL_APPLY"},
+                               {"message", "Output was published before failure"},
+                               {"retryable", false}};
+            return result;
+        }
+        if (std::wstring(acDocManager->curDocument()->fileName()) != original_name ||
+            dbmod() != original_dirty || db->insunits() != original_units)
+            throw Failure{"PARTIAL_APPLY", "Source state changed before output publication"};
         throw;
     }
     std::error_code ignored;
@@ -887,6 +972,42 @@ json save_copy(AcDbDatabase *db, const json &p) {
 }
 
 #ifdef AUTOCAD_MCP_TESTING
+class SyntheticVeto : public AcApDocManagerReactor {
+  public:
+    bool enabled = false;
+    void documentLockModeChanged(AcApDocument *, AcAp::DocLockMode, AcAp::DocLockMode next, AcAp::DocLockMode,
+                                 const ACHAR *) override {
+        if (enabled && (next & AcAp::kWrite))
+            veto();
+    }
+} synthetic_veto;
+bool veto_registered = false;
+HWND test_dispatcher = nullptr;
+std::atomic<bool> synthetic_modal_active{false};
+INT_PTR CALLBACK synthetic_dialog(HWND dialog, UINT msg, WPARAM, LPARAM) {
+    if (msg == WM_INITDIALOG) {
+        synthetic_modal_active = true;
+        SetTimer(dialog, 1, 1200, nullptr);
+        return TRUE;
+    }
+    if (msg == WM_TIMER) {
+        KillTimer(dialog, 1);
+        EndDialog(dialog, 0);
+        return TRUE;
+    }
+    return FALSE;
+}
+void open_synthetic_modal() {
+    struct Template {
+        DLGTEMPLATE dialog;
+        WORD menu, cls, title;
+    } data{};
+    data.dialog.style = WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_MODALFRAME;
+    data.dialog.cx = 180;
+    data.dialog.cy = 50;
+    DialogBoxIndirectParamW(GetModuleHandleW(nullptr), &data.dialog, adsw_acadMainWnd(), synthetic_dialog, 0);
+    synthetic_modal_active = false;
+}
 // Fixed actions for our synthetic desktop acceptance process. No raw commands or paths
 // can be supplied by the caller; this code is excluded from normal builds.
 json desktop_test_action(const json &p) {
@@ -907,7 +1028,14 @@ json desktop_test_action(const json &p) {
     auto primary = find_document(L"primary.dwg");
     need(primary != nullptr, "SECURITY_DENIED", "Synthetic primary drawing is not open");
     const auto action = text(p, "action");
-    if (action == "quit") {
+    const std::set<std::string> faults = {"abort_before_commit", "delay_before_commit", "verify_after_commit",
+                                          "delay_after_commit",  "reopen_failure",      "delay_after_publish",
+                                          "abort_unconfirmed",   "source_side_effect"};
+    if (faults.contains(action)) {
+        next_fault = action;
+        return {{"armed", true}};
+    }
+    if (action == "quit" || action == "restart" || action == "assert_owned") {
         // A user may open another file while the visible test window is left open.
         // Never let synthetic cleanup close an unrelated drawing in that process.
         auto iter = acDocManager->getDocumentIterator();
@@ -918,9 +1046,72 @@ json desktop_test_action(const json &p) {
             need(ours, "SECURITY_DENIED", "Unrelated drawing is open; synthetic cleanup is refused");
         }
     }
-    if (action == "open_secondary") {
+    if (action == "begin_outer_transaction" || action == "end_outer_transaction") {
+        auto target = identity(primary->database());
+        DocumentContext context(target, true);
+        if (action == "begin_outer_transaction") {
+            need(!synthetic_outer_transaction);
+            synthetic_outer_transaction = std::make_unique<Transaction>(primary->database());
+        } else
+            synthetic_outer_transaction.reset();
+        return {{"open", synthetic_outer_transaction != nullptr}};
+    }
+    if (action == "restore_units") {
+        auto target = identity(primary->database());
+        DocumentContext context(target, true);
+        cad(primary->database()->setInsunits(static_cast<AcDb::UnitsValue>(4)));
+        return {{"restored", true}};
+    }
+    if (action == "assert_owned")
+        return {{"owned", true}};
+    if (action == "seal_records") {
+        jobs->seal_records_for_test();
+        return {{"sealed", true}};
+    }
+    if (action == "modal") {
+        need(SetTimer(test_dispatcher, 42, 50, nullptr) != 0);
+        return {{"queued", true}};
+    }
+    if (action == "veto_on" || action == "veto_off") {
+        if (!veto_registered) {
+            acDocManager->addReactor(&synthetic_veto);
+            veto_registered = true;
+        }
+        synthetic_veto.enabled = action == "veto_on";
+        return {{"enabled", synthetic_veto.enabled}};
+    }
+    if (action == "seed_arc" || action == "external_edit") {
+        auto target = identity(primary->database());
+        DocumentContext context(target, true);
+        auto db = primary->database();
+        Transaction tx(db);
+        auto model = tx.get<AcDbBlockTableRecord>(acdbSymUtil()->blockModelSpaceId(db), AcDb::kForWrite);
+        std::unique_ptr<AcDbEntity> entity;
+        if (action == "seed_arc")
+            entity = std::make_unique<AcDbArc>(AcGePoint3d(20, 20, 0), AcGeVector3d::kZAxis, 10, 0, 1);
+        else
+            entity = std::make_unique<AcDbLine>(AcGePoint3d(5, 5, 0), AcGePoint3d(15, 5, 0));
+        entity->setDatabaseDefaults(db);
+        AcDbObjectId id;
+        cad(model->appendAcDbEntity(id, entity.get()));
+        auto raw = entity.release();
+        cad(tx.manager->addNewlyCreatedDBRObject(raw, true));
+        auto er = ref(db, raw);
+        tx.commit();
+        return {{"entityRef", er}};
+    }
+    if (action == "open_secondary" || action == "open_readonly") {
         need(find_document(L"secondary.dwg") == nullptr);
-        cad(acDocManager->appContextOpenDocument((root / L"secondary.dwg").c_str()));
+        const auto path = (root / L"secondary.dwg").wstring();
+        if (action == "open_readonly") {
+            AcApDocManager::DocOpenParams params{};
+            params.mpwszFileName = path.c_str();
+            params.mnInitialViewType = AcApDocManager::DocOpenParams::kDefaultView;
+            params.mnFlags = AcApDocManager::DocOpenParams::kRequireReadOnly |
+                             AcApDocManager::DocOpenParams::kFileNameArgIsUnicode;
+            cad(acDocManager->appContextOpenDocument(&params));
+        } else
+            cad(acDocManager->appContextOpenDocument(path.c_str()));
         auto secondary = find_document(L"secondary.dwg");
         need(secondary != nullptr, "EXECUTION_FAILED", "Synthetic secondary did not open");
         return doc_info(secondary);
@@ -941,7 +1132,8 @@ json desktop_test_action(const json &p) {
             result["current"] = identity(current->database());
         return result;
     }
-    if (action == "begin_line" || action == "cancel_line" || action == "undo_primary" || action == "quit") {
+    if (action == "begin_line" || action == "cancel_line" || action == "undo_primary" || action == "quit" ||
+        action == "restart") {
         need(acDocManager->mdiActiveDocument() == primary, "SECURITY_DENIED",
              "Synthetic primary must be active");
         if (action != "cancel_line")
@@ -949,6 +1141,7 @@ json desktop_test_action(const json &p) {
         const wchar_t *command = action == "begin_line"     ? L"_.LINE\n"
                                  : action == "cancel_line"  ? L"\x03\x03"
                                  : action == "undo_primary" ? L"_.UNDO\n1\n"
+                                 : action == "restart"      ? L"MCPSTOP\nMCPSTART\n"
                                                             : L"MCPSTOP\n_.QUIT\n_N\n";
         cad(acDocManager->sendStringToExecute(primary, command, true, false, false));
         return {{"queued", true}};
@@ -1029,31 +1222,21 @@ json execute(const json &request) {
                   {"flatOutputFilenameOnly", true}}},
                 {"outputRoots", json::array({{{"id", "test-output"}, {"scope", "private session output"}}})}};
         }
-        const auto key =
-            (p.contains("documentEpoch") ? std::to_string(number(p, "documentEpoch")) : std::string()) + ":" +
-            p.value("operationId", std::string());
-        const auto fingerprint = request.dump();
-        if (method == "acad_get_operation_status") {
-            auto it = operations.find(key);
-            if (it != operations.end()) {
-                need(it->second.second.value("documentId", std::string()) == text(p, "documentId"));
-                return it->second.second;
-            }
-            auto result = mcp::error("TIMEOUT_UNKNOWN", "Operation effect is not known", nullptr);
-            include(result, p);
-            return result;
-        }
-        if (mutation(method)) {
-            auto it = operations.find(key);
-            if (it != operations.end()) {
-                need(it->second.first == fingerprint, "IDEMPOTENCY_CONFLICT",
-                     "Operation ID reused with different arguments");
-                return it->second.second;
-            }
-            need(operations.size() < 10000, "DOC_BUSY", "Operation record quota reached");
-        }
-        DocumentContext context(p, mutation(method) && method != "acad_save_copy");
+        if (mutation(method))
+            need(!rollback_uncertain, "DOC_BUSY",
+                 "An earlier rollback could not be confirmed; restart pairing before writing");
+        bool write_context = mutation(method) && method != "acad_save_copy";
+#ifdef AUTOCAD_MCP_TESTING
+        // The normal snapshot holds a read lock. Only the synthetic side-effect
+        // fixture takes a write lock so its deliberate source mutation can occur.
+        if (method == "acad_save_copy" && next_fault == "source_side_effect")
+            write_context = true;
+#endif
+        DocumentContext context(p, write_context);
         auto db = context.doc->database();
+        if (mutation(method))
+            need(db->transactionManager() && db->transactionManager()->numActiveTransactions() == 0,
+                 "DOC_BUSY", "Another database transaction is active");
         if (method == "acad_get_document_info")
             return doc_info(context.doc);
         if (method == "acad_get_entity" || method == "acad_query_entities")
@@ -1063,7 +1246,9 @@ json execute(const json &request) {
         try {
             result = method == "acad_save_copy" ? save_copy(db, p) : mutate(db, method, p);
         } catch (const Failure &e) {
-            result = mcp::error(e.code, e.message);
+            result = mcp::error(e.code, e.message, e.code == "PARTIAL_APPLY");
+            if (e.code == "PARTIAL_APPLY")
+                result["verified"] = false;
             include(result, identity(db));
             result["operationId"] = text(p, "operationId");
             result["revision"] = state(db).revision;
@@ -1072,7 +1257,13 @@ json execute(const json &request) {
             include(result, identity(db));
             result["operationId"] = text(p, "operationId");
         }
-        operations[key] = {fingerprint, result};
+        if (rollback_uncertain && mutation(method)) {
+            auto uncertain = mcp::error("TIMEOUT_UNKNOWN",
+                                        "Rollback could not be confirmed; writes are quarantined", nullptr);
+            include(uncertain, identity(db));
+            uncertain["operationId"] = text(p, "operationId");
+            return uncertain;
+        }
         return result;
     } catch (const Failure &e) {
         return mcp::error(e.code, e.message);
@@ -1081,17 +1272,11 @@ json execute(const json &request) {
     }
 }
 
-struct Job {
-    json request;
-    std::promise<json> response;
-};
-std::mutex queue_mutex;
-std::deque<std::shared_ptr<Job>> queue;
-HWND dispatcher = nullptr;
+HWND dispatcher = nullptr, main_window = nullptr;
 std::atomic<bool> shutdown = false, test_done = false;
 DWORD main_thread = 0;
 void *application_id = nullptr;
-bool application_locked = false, context_posted = false;
+bool application_locked = false, context_posted = false, draining = false;
 void release_application_if_idle() {
     if (application_locked && !runtime && !context_posted) {
         acrxUnlockApplication(application_id);
@@ -1099,27 +1284,33 @@ void release_application_if_idle() {
     }
 }
 void drain(void *) {
-    if (GetCurrentThreadId() != main_thread)
+    if (GetCurrentThreadId() != main_thread || draining)
         return;
-    for (;;) {
-        std::shared_ptr<Job> job;
-        {
-            std::lock_guard lock(queue_mutex);
-            if (queue.empty())
-                break;
-            job = queue.front();
-            queue.pop_front();
+    struct Guard {
+        Guard() {
+            draining = true;
         }
+        ~Guard() {
+            draining = false;
+            current_cancel = nullptr;
+        }
+    } guard;
+    for (;;) {
+        auto job = jobs->take();
+        if (!job)
+            break;
+        current_cancel = &job->cancelled;
         if (job->request.value("method", std::string()) == "bridge.test_done") {
             try {
                 validate("bridge.test_done", job->request.at("params"));
                 test_done = true;
-                job->response.set_value({{"stopped", true}});
+                jobs->finish(job, {{"stopped", true}});
             } catch (...) {
-                job->response.set_value(mcp::error("SECURITY_DENIED", "Test control unavailable"));
+                jobs->finish(job, mcp::error("SECURITY_DENIED", "Test control unavailable"));
             }
         } else
-            job->response.set_value(execute(job->request));
+            jobs->finish(job, execute(job->request));
+        current_cancel = nullptr;
     }
 }
 void context_drain(void *) {
@@ -1128,6 +1319,13 @@ void context_drain(void *) {
     release_application_if_idle();
 }
 LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM w, LPARAM l) {
+#ifdef AUTOCAD_MCP_TESTING
+    if (message == WM_TIMER && w == 42) {
+        KillTimer(window, 42);
+        open_synthetic_modal();
+        return 0;
+    }
+#endif
     if (message == WM_APP + 41) {
         if (acDocManager->isApplicationContext())
             drain(nullptr);
@@ -1141,31 +1339,51 @@ LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM w, LPARAM l) {
     return DefWindowProcW(window, message, w, l);
 }
 json schedule(const json &request) {
-    auto job = std::make_shared<Job>();
-    job->request = request;
-    auto result = job->response.get_future();
-    {
-        std::lock_guard lock(queue_mutex);
-        if (queue.size() >= 64 || shutdown)
-            return mcp::error("DOC_BUSY", "Queue unavailable");
-        queue.push_back(job);
-    }
-    if (dispatcher)
-        PostMessageW(dispatcher, WM_APP + 41, 0, 0);
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(8);
-    while (!shutdown && std::chrono::steady_clock::now() < deadline) {
-        if (result.wait_for(std::chrono::milliseconds(50)) == std::future_status::ready)
-            return result.get();
-    }
-    {
-        std::lock_guard lock(queue_mutex);
-        auto it = std::find(queue.begin(), queue.end(), job);
-        if (it != queue.end()) {
-            queue.erase(it);
-            return mcp::error("DOC_BUSY", "Main thread did not accept operation");
+    std::shared_ptr<mcp::Job> admitted;
+    try {
+        const auto method = request.at("method").get<std::string>();
+        const auto &p = request.at("params");
+#ifdef AUTOCAD_MCP_TESTING
+        if (method == "bridge.test_probe") {
+            need(p.size() == 1 && GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) > 0,
+                 "SECURITY_DENIED");
+            return {{"modalActive", synthetic_modal_active.load()},
+                    {"mainEnabled", !main_window || IsWindowEnabled(main_window) != FALSE}};
         }
+#endif
+        if (method == "acad_get_operation_status" || method == "bridge.cancel") {
+            need(p.size() == 4 && number(p, "documentEpoch") > 0);
+            text(p, "documentId");
+            text(p, "operationId");
+            text(p, "instanceId");
+            return jobs->status(p, method == "bridge.cancel");
+        }
+        if (mutation(method)) {
+            // Validate record keys without calling AutoCAD on an IPC worker.
+            need(number(p, "documentEpoch") > 0);
+            need(std::regex_match(text(p, "operationId"), std::regex("[A-Za-z0-9_-]{1,128}")));
+            need(std::regex_match(text(p, "documentId"), std::regex("[A-Za-z0-9_-]{1,128}")));
+        }
+        auto admission = jobs->submit(request, mutation(method));
+        if (!admission.job)
+            return admission.rejection;
+        auto job = admission.job;
+        admitted = job;
+        if (main_window && !IsWindowEnabled(main_window))
+            jobs->reject_queued(job, mcp::error("DOC_BUSY", "AutoCAD has an active modal window"));
+        if (dispatcher)
+            PostMessageW(dispatcher, WM_APP + 41, 0, 0);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(8);
+        while (!shutdown && std::chrono::steady_clock::now() < deadline) {
+            if (job->result.wait_for(std::chrono::milliseconds(50)) == std::future_status::ready)
+                return job->result.get();
+        }
+        return jobs->timeout(job);
+    } catch (...) {
+        if (admitted)
+            return mcp::error("TIMEOUT_UNKNOWN", "Admitted operation result unavailable", nullptr);
+        return mcp::error("VALIDATION_FAILED", "Malformed scheduler request");
     }
-    return mcp::error("TIMEOUT_UNKNOWN", "Operation is still running", nullptr);
 }
 std::filesystem::path env_path(const wchar_t *key) {
     wchar_t path[32768]{};
@@ -1181,6 +1399,9 @@ void start() {
     }
     try {
         main_thread = GetCurrentThreadId();
+        main_window = adsw_acadMainWnd();
+        rollback_uncertain = false;
+        jobs = std::make_unique<mcp::Jobs>();
         shutdown = false;
         test_done = false;
         auto root = env_path(L"MCP_RUNTIME_DIR");
@@ -1198,12 +1419,15 @@ void start() {
         dispatcher = CreateWindowW(cls.lpszClassName, L"", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr,
                                    cls.hInstance, nullptr);
         need(dispatcher != nullptr, "EXECUTION_FAILED", "Cannot create main thread dispatcher");
+#ifdef AUTOCAD_MCP_TESTING
+        test_dispatcher = dispatcher;
+#endif
         auto allowed = names;
         if (GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) > 0)
             allowed.push_back("bridge.test_done");
 #ifdef AUTOCAD_MCP_TESTING
         if (GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) > 0)
-            allowed.push_back("bridge.test_action");
+            allowed.insert(allowed.end(), {"bridge.test_action", "bridge.test_probe"});
 #endif
         runtime = std::make_unique<mcp::Runtime>(root, schedule, allowed);
         output_root = runtime->grant_file().parent_path() / "output";
@@ -1216,13 +1440,18 @@ void start() {
 }
 void stop() {
     shutdown = true;
-    {
-        std::lock_guard lock(queue_mutex);
-        for (auto &job : queue)
-            job->response.set_value(mcp::error("DOC_BUSY", "Bridge stopping"));
-        queue.clear();
-    }
+    if (jobs)
+        jobs->stop();
     runtime.reset();
+#ifdef AUTOCAD_MCP_TESTING
+    synthetic_outer_transaction.reset();
+    if (veto_registered) {
+        acDocManager->removeReactor(&synthetic_veto);
+        veto_registered = false;
+    }
+    synthetic_veto.enabled = false;
+    next_fault.clear();
+#endif
     if (dispatcher) {
         DestroyWindow(dispatcher);
         dispatcher = nullptr;
@@ -1231,7 +1460,7 @@ void stop() {
     for (auto &[db, s] : documents)
         db->removeReactor(&watcher);
     documents.clear();
-    operations.clear();
+    jobs.reset();
     cursors.clear();
     release_application_if_idle();
     acutPrintf(L"\nAutocad MCP stopped.\n");

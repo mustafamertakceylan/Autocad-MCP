@@ -268,7 +268,10 @@ json parse(const std::string &text) {
     return result;
 }
 json error(const std::string &code, const std::string &message, json applied) {
-    return {{"status", applied.is_null() ? "unknown" : "failed"},
+    return {{"status", applied.is_null()         ? "unknown"
+                       : code == "PARTIAL_APPLY" ? "partial"
+                       : code == "CANCELLED"     ? "cancelled"
+                                                 : "failed"},
             {"applied", applied},
             {"verified", nullptr},
             {"error",
@@ -299,16 +302,33 @@ Runtime::Runtime(std::filesystem::path root, std::function<json(const json &)> h
         throw std::runtime_error("runtime directory");
     endpoint_ = (directory_ / "bridge.sock").string();
 #endif
+#ifdef _WIN32
+    control_endpoint_ = endpoint_ + "-control";
+    Pipe pipes[3];
+    // Bind all endpoints before advertising a usable pairing. Keep handles alive
+    // between connections so no other process can claim a gap in the pipe name.
+    for (int i = 0; i < 3; ++i) {
+        const auto &name = i == 2 ? control_endpoint_ : endpoint_;
+        const std::wstring endpoint(name.begin(), name.end());
+        pipes[i].handle = CreateNamedPipeW(
+            endpoint.c_str(),
+            PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | (i == 1 ? 0 : FILE_FLAG_FIRST_PIPE_INSTANCE),
+            PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, i == 2 ? 1 : 2,
+            65536, 65536, 0, &security.attributes);
+        if (pipes[i].handle == INVALID_HANDLE_VALUE)
+            throw std::runtime_error("pipe bind");
+    }
+#endif
     grant_file_ = directory_ / "pairing.json";
     const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
                          std::chrono::system_clock::now().time_since_epoch())
                          .count();
     expires_at_ = now + 24 * 60 * 60 * 1000;
-    const auto content =
-        json{{"bridgeVersion", "0.1.0"}, {"instanceId", instance_}, {"endpoint", endpoint_},
-             {"secret", secret_},        {"backend", "objectarx"},  {"expiresAt", expires_at_},
-             {"operations", operations_}}
-            .dump();
+    const auto content = json{{"bridgeVersion", "0.1.0"}, {"instanceId", instance_},
+                              {"endpoint", endpoint_},    {"controlEndpoint", control_endpoint_},
+                              {"secret", secret_},        {"backend", "objectarx"},
+                              {"expiresAt", expires_at_}, {"operations", operations_}}
+                             .dump();
 #ifdef _WIN32
     HANDLE file = CreateFileW(grant_file_.c_str(), GENERIC_WRITE, 0, &security.attributes, CREATE_NEW,
                               FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -328,31 +348,43 @@ Runtime::Runtime(std::filesystem::path root, std::function<json(const json &)> h
     if (count != static_cast<ssize_t>(content.size()))
         throw std::runtime_error("pairing write");
 #endif
-    thread_ = std::thread([this] { run(); });
+#ifdef _WIN32
+    try {
+        threads_.reserve(3);
+        for (int i = 0; i < 3; ++i) {
+            const auto h = pipes[i].handle;
+            threads_.emplace_back([this, h, i] { run(reinterpret_cast<std::uintptr_t>(h), i == 2); });
+            pipes[i].handle = INVALID_HANDLE_VALUE;
+        }
+    } catch (...) {
+        stop();
+        throw;
+    }
+#endif
 }
 Runtime::~Runtime() {
     stop();
 }
 void Runtime::stop() {
     stopping_ = true;
-    if (thread_.joinable())
-        thread_.join();
+    for (auto &thread : threads_)
+        if (thread.joinable())
+            thread.join();
     std::fill(secret_.begin(), secret_.end(), '\0');
     std::error_code ignored;
     std::filesystem::remove(grant_file_, ignored); /* Revoke only the file created by this runtime. */
 }
-void Runtime::run() {
+void Runtime::run(std::uintptr_t handle, bool control) {
 #ifdef _WIN32
-    PrivateSecurity security;
+    Pipe pipe;
+    pipe.handle = reinterpret_cast<HANDLE>(handle);
     while (!stopping_) {
-        Pipe pipe;
-        const std::wstring endpoint(endpoint_.begin(), endpoint_.end());
-        pipe.handle = CreateNamedPipeW(
-            endpoint.c_str(), PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
-            PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, 1, 65536, 65536, 0,
-            &security.attributes);
-        if (pipe.handle == INVALID_HANDLE_VALUE)
-            return;
+        struct Disconnect {
+            HANDLE handle;
+            ~Disconnect() {
+                DisconnectNamedPipe(handle);
+            }
+        } disconnect{pipe.handle};
         OVERLAPPED ov{};
         ov.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
         if (!ov.hEvent)
@@ -410,12 +442,27 @@ void Runtime::run() {
                 const auto current = std::chrono::duration_cast<std::chrono::milliseconds>(
                                          std::chrono::system_clock::now().time_since_epoch())
                                          .count();
-                if (current >= expires_at_)
+                if (request.at("params").value("instanceId", std::string()) != instance_ &&
+                    method != "acad_list_instances")
+                    result = error("INSTANCE_NOT_FOUND", "Instance is not paired");
+                else if (GetFileAttributesW(grant_file_.c_str()) == INVALID_FILE_ATTRIBUTES)
+                    result = error("IPC_AUTH_FAILED", "Pairing revoked");
+                else if (current >= expires_at_)
                     result = error("IPC_AUTH_FAILED", "Pairing expired");
-                else if (std::find(operations_.begin(), operations_.end(), method) == operations_.end())
+                else if ((control && method != "bridge.cancel" && method != "acad_get_operation_status" &&
+                          method != "bridge.test_probe") ||
+                         (!control && method == "bridge.cancel") ||
+                         (std::find(operations_.begin(), operations_.end(), method) == operations_.end() &&
+                          method != "bridge.cancel"))
                     result = error("SECURITY_DENIED", "Operation not granted");
-                else
-                    result = handler_(request);
+                else {
+                    try {
+                        result = handler_(request);
+                    } catch (...) {
+                        result = error("EXECUTION_FAILED",
+                                       "Handler result unavailable; reconcile before retry", nullptr);
+                    }
+                }
             } catch (...) {
                 result = error("VALIDATION_FAILED", "Invalid bridge request");
             }
@@ -440,7 +487,6 @@ void Runtime::run() {
             }
         } catch (...) { /* Reject malformed or unauthenticated peers without exposing drawing data. */
         }
-        DisconnectNamedPipe(pipe.handle);
     }
 #else
     // Shared protocol/crypto compile target; native Mac socket serving awaits Mac verification.
