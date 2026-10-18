@@ -1,6 +1,6 @@
 # Yetenek matrisi (ilk plan)
 
-> Durum: 2026-10-18 ilk plan. Windows prototipinin kanıtlı alt kümesi aşağıdaki tabloda ayrıldı. Mac ve diğer özellikler uygulanmadı; Windows kanıtı Core Console ve görünür masaüstü temel kabulünü kapsar; bütün ürün özellikleri değildir. Tablo ürün vaadi değil; planlama ve kanıt takibi aracıdır.
+> Durum: 2026-10-18 ilk plan. Windows prototipinin kanıtlı alt kümesi aşağıdaki tabloda ayrıldı. Mac ve diğer özellikler uygulanmadı; Windows kanıtı Core Console ve görünür masaüstü Faz 2–3 kabulünü (Faz 3: 56 kontrol) kapsar; bütün ürün özellikleri değildir. Tablo ürün vaadi değil; planlama ve kanıt takibi aracıdır.
 
 İlgili belgeler: [Plan](PLAN.md), [Kararlar](KARARLAR.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md). Aşama sütunu güncel Windows hattıdır; Mac sütunu ayrı Faz M kabulüne aittir ve Windows ilerlemesini engellemez.
 

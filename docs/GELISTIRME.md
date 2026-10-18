@@ -92,11 +92,27 @@ Bu, istemciye verilecek süreç/argüman bilgisidir; belirli bir istemcinin ayar
 
 - Modelspace; çizgi, WCS XY çember, eksenlere paralel kutu. Taşıma/silme çizgi, çember ve bu oturumda üretilen kutularla sınırlı.
 - Birimler `mm`, `m`, `inch`, `drawing_unit`; fiziksel dönüşüm INSUNITS 1/4/6 için. Bilinmeyen birimde fiziksel yazma reddedilir; açık drawing_unit kabul edilir. Inch canlı testi çalıştırılmadı.
-- Tek eşleştirilmiş instance ve MCP süreci başına bir IPC çağrısı. Faz 3: toplam 64 admission sınırı; kuyrukta iptal gönderilmeden kaldırılır, gönderilmiş mutasyonun etkisi unknown kalabilir. Grant yürütmeden önce yeniden doğrulanır. Çoklu istemci paylaşımı ürün kabulü değildir.
+- Tek eşleştirilmiş instance; MCP süreci başına bir normal IPC çağrısı/64 iş admission sınırı. Bağımsız kontrol pipe'ı status/iptali CAD işinden ayırır. Native iki ana bağlantı, tek CAD thread'i; iki istemciden eşzamanlı dedup sınandı. Claude/Codex birlikte kullanım pilotu Faz 4'tedir.
 - HMAC sırrı + işlem izin listesi; kullanıcı arayüzünden profil verme/iptal yönetimi yok. Windows dosya ACL'si eklenti tarafından oluşturulur; Node ayrıca Windows ACL denetimi yapmaz.
 - Mutasyon başına en fazla 100 hedef; sorgu limit 1000, tarama 10000, çerçeve 1 MiB, iç gövde 512 KiB. Büyük çizim performansı sınanmadı.
 - Ayrı kayıt yalnız oturumun `output` dizinine, `outputRootId=test-output`, düz yeni `.dwg` adı, `overwrite:false`. Alt dizin ve genel kullanıcı kökü seçimi yok.
 - Kopya doğrulaması modelspace nesne sayısı/INSUNITS ve desteklenen LINE/CIRCLE/3DSOLID geometrisini karşılaştırır. Bütün layout, xref, metadata ve özel nesne verisini doğruladığını iddia etmez.
-- Kalıcı işlem günlüğü, native çalışan işi iptal etme, genel LISP/komut, HTTP, kurulum paketi ve Mac native eklenti yok.
+- Native cooperative iptal commit öncesi kontrol noktalarında uygulanır; uzun AutoCAD API çağrısı zorla kesilmez. Kalıcı işlem günlüğü, genel LISP/komut, HTTP, kurulum paketi ve Mac native eklenti yok.
 
 Proje lisansı seçilmedi; bağımlılık lisansları [üçüncü taraf notlarında](../THIRD_PARTY_NOTICES.md). Yayın ve paketleme ayrı onay gerektirir.
+
+## 6. Faz 3 hata enjeksiyonu (56 kontrol)
+
+Bu paket yalnız sentetik çizimler ve yeni test profili kullanır; mevcut acad süreci varsa başlamaz. Son senaryo kendi test sürecini çalışan mutasyon sırasında sonlandırır. **Kişisel çizim açmayın.** Kullanıcı dosyası açılmışsa sabit assert_owned/restart/quit kontrolleri cleanup'ı reddeder. Yeni profile verilen izinler normal profili değiştirmez.
+
+```powershell
+cmake -S . -B build/test-controls-check -G "Visual Studio 18 2026" -A x64 -DOBJECTARX_ROOT="C:/Dev/Other Projects/Autocad MCP/tmp/sdk/CDROM1" -DJSON_INCLUDE_DIR="C:/Dev/Other Projects/Autocad MCP/tmp/deps" -DAUTOCAD_MCP_TESTING=ON
+cmake --build build/test-controls-check --config Release
+npm run build
+$env:AUTOCAD_MCP_PHASE3_TEST='1'
+node dist/test/phase3-windows.js
+```
+
+Sonuç `tmp/desktop-runs/<UUID>/phase3-results.json`. Süreç öldüğünde eski pairing dosyası kalabilir; endpoint IPC_UNAVAILABLE verir, otomatik tekrar yapılmaz. Normal dağıtım hedefi build/native ve AUTOCAD_MCP_TESTING=OFF'tur. Normal derlemede test_action/test_probe/fault/seal_records kodu etkin değildir.
+
+Enjeksiyon ayrımı: abort_before_commit gerçek transaction abort'unu ve nesnenin kaybolmasını ölçer. abort_unconfirmed gerçek abort sonrasında kanıt eksikliğini taklit eder; gerçek SDK abort başarısızlığı iddiası değildir. source_side_effect yalnız testte snapshot'a write lock verir ve sentetik kaynak INSUNITS'ını değiştirir; gerçek değişim partial bildirimini sınar, test-only restore_units ile 4'e geri alınır. Normal save_copy read lock kullanır. Modal kontrolü süre tahminiyle değil, ayrı test probe'u ile gerçekten aktif/owner disabled olduğu görülerek yapılır.

@@ -10,12 +10,12 @@ Göreve başlamadan `docs/standart/ortak/KURALLAR.md` ve `docs/standart/ortak/US
 - Çalışma klasörü: `C:\Dev\Other Projects\Autocad MCP`.
 - Hedef: Her kullanıcının bilgisayarında yerel çalışan, tam AutoCAD 2027 ile MCP istemcileri arasında köprü; Windows ve macOS.
 - Yeni 2B/3B çizim ve mevcut çizimi inceleme/düzenleme birlikte hedeflenir.
-- Mimari yönü: dış TypeScript MCP sunucusu, içeride ortak C++/ObjectARX kaynaklarından platforma özel derlenen eklenti. Windows dikey dilimi gerçek AutoCAD 2027 Core Console ile doğrulandı; Windows masaüstü çoklu belge/komut/UNDO/kayıt temel kabulü de geçti. Mac kabulü ayrı Faz M'dedir.
+- Mimari yönü: dış TypeScript MCP sunucusu, içeride ortak C++/ObjectARX kaynaklarından platforma özel derlenen eklenti. Windows dikey dilimi gerçek AutoCAD 2027 Core Console ile doğrulandı; Windows masaüstü çoklu belge/komut/UNDO/kayıt temel kabulü ve Faz 3 güvenilirlik kabulü geçti. Mac kabulü ayrı Faz M'dedir.
 - Kullanıcı iletişimi ve proje belgeleri Türkçe; Prototip MCP araç açıklamaları İngilizce; kullanıcı belgeleri Türkçe.
 - Commit dili bu yeni depo için Türkçe; kapsamlar: `init`, `agents`, `plan`, `docs`, ileride `bridge`, `plugin`, `mcp`, `installer`.
 
 ## Güncel kapsam kilidi
-- **Kullanıcı 2026-10-18 tarihinde Faz 2'yi tamamlayıp Faz 3'e geçilmesini istedi; işi yönetici kendisi yürütür.** Ortak MCP/IPC kodu, güvenilirlik testleri, Windows ObjectARX eklentisi ve izole Windows AutoCAD denemeleri yetkilidir. Ajanlara görev verilmez. Devamdan önceki mevcut çalışma kullanıcının talebiyle üç commit'e kaydedildi; bu izin sonraki değişikliklere veya push'a aktarılmaz.
+- **Kullanıcı 2026-10-18 tarihinde Faz 2'yi tamamlayıp Faz 3'e geçilmesini istedi; işi yönetici kendisi yürütür.** Ortak MCP/IPC kodu, güvenilirlik testleri, Windows ObjectARX eklentisi ve izole Windows AutoCAD denemeleri yetkilidir. Ajanlara görev verilmez. Devamdan önceki mevcut çalışma kullanıcının talebiyle üç commit'e kaydedildi; bu izin sonraki değişikliklere veya push'a aktarılmaz. Kullanıcı daha sonra 2026-10-18 tarihinde tamamlanmış Faz 3 değişikliklerinin tamamı için ayrıca commit ve push onayı verdi; bu talep mevcut çalışma grubuna uygulanır.
 - Kullanıcı 2026-10-18 tarihinde Mac'i ayrı **Faz M** olarak ayırdı. Güncel Faz 2–6 Windows üzerinden ilerler; Mac bu fazların bitişini engellemez. Ortak kaynak hazırlanabilir; Mac'e SSH, Mac derlemesi ve canlı Mac testi bu işte yapılmaz. Faz M ayrıca kullanıcı tarafından başlatılır.
 - Gerekli yerel bağımlılıklar, proje derleme betikleri ve manifestler eklenebilir. SDK lisans/koşul kabulü, hesap, ödeme, public yayın ve istemcilerin kişisel ayarlarını değiştirme kullanıcıya aittir. Commit/push için ayrıca açık talep gerekir.
 - Bu kurulum işi için yönetici private depoyu oluşturur ve yalnız denetlenen plan/kural belgelerini ilk commit ile kaydeder. Bu izin sonraki geliştirme işlerine aktarılmaz.

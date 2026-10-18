@@ -90,11 +90,13 @@ Bu maddeler yönetici tarafından belirlenen tasarım yönleridir. Faz 1 tasarı
 - Her çağrı açık instance/belge/epoch hedefler. Yazma revision ve operationId ister. İşlem kayıtları bellekte, en fazla 10000; yeniden başlatma sonrası kalıcılık yok. Kör tekrar yok.
 - Ayrı DWG: yalnız oturumun private output kökü (`test-output`), düz yeni dosya adı, üzerine yazma yok. Side-database snapshot, yeniden açma/geometri karşılaştırması ve no-replace yayın kullanılır.
 - Ana thread'e Win32 mesaj sevki; application context ve belge kilidi. Core Console test pompası aynı mesaj yolunu kullanır. Görünür masaüstünde test pompası olmadan belge/context, meşgul LINE, UNDO ve dosya yarışları ayrıca geçti.
-- `bridge.cancel` ve kalıcı işlem günlüğü uygulanmadı. MCP iptali yerel beklemeyi keser; gönderilmiş mutasyonun sonucu unknown olabilir.
-- [Kabul belgesi](TEKNIK_DENEME_KABUL.md) gerçek sonuçları ve çalıştırılmayan kapıları ayırır. Mac ayrı Faz M'ye taşındı; Windows Faz 2'nin 26 masaüstü kontrolü geçti; Faz 3 güvenilirlik çalışmaları başladı.
-- Commit/push/yayın için bu işte izin yoktur. Önceki belge işindeki ajan kayıtları tarihsel kayıttır; Faz 2 yöneticinin kendisi tarafından yazıldı.
+- Faz 3: HMAC ile korunan ayrı kontrol pipe'ı, native queued/running/terminal kayıt, eşzamanlı dedup ve cooperative `bridge.cancel` uygulandı. İptal ancak kanıtlı transaction abort'ta cancelled; commit sonrası sonuç korunur. Kayıt bütçesi 10000/64 MiB. Kalıcı işlem günlüğü yok; restart sonrası unknown ve açık yeni pairing gerekir.
+- [Kabul belgesi](TEKNIK_DENEME_KABUL.md) gerçek sonuçları ve çalıştırılmayan kapıları ayırır. Mac ayrı Faz M'ye taşındı; Windows Faz 2'nin 26 masaüstü kontrolü geçti; Faz 3 güvenilirlik kabulü 56/56 gerçek masaüstü kontrolüyle tamamlandı.
+- Önceki çalışma 0f0afba, 792e09d, 18bd335; ardından yönetici tarafından geliştirilen Faz 3 kod/testleri 8e1c5fa olarak kaydedildi. Kullanıcı 2026-10-18 tarihinde mevcut değişikliklerin tamamını commit/push etmeyi açıkça istedi. Kabul belgeleri ayrı commit edilir; hedef private deponun main dalıdır. Bu izin sonraki özellik geliştirmesine veya paket yayınına aktarılmaz.
 
 ## 5. Kaynaklar
+
+- Autodesk: lock veto yalnız documentLockModeChanged callback'inde uygulanır; will-change testi buna göre düzeltildi: <https://help.autodesk.com/cloudhelp/2027/ENU/OARX-RefGuide/files/OARX-RefGuide-AcApDocManagerReactor__documentLockModeChangeVetoed_AcApDocument__ACHAR_.html>
 
 - [Plan](PLAN.md) — aşamalar, mimari önerisi, test katmanları.
 - [Yetenek matrisi](YETENEK_MATRISI.md) — modül/platform/test durumu.
