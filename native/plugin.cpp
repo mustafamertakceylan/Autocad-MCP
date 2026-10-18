@@ -327,8 +327,13 @@ void validate(const std::string &method, const json &p) {
         need(p.empty());
         return;
     }
-    if (method == "bridge.test_done") {
-        need(GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) > 0 && p.size() == 1 &&
+    if (method == "bridge.test_done"
+#ifdef AUTOCAD_MCP_TESTING
+        || method == "bridge.test_action"
+#endif
+    ) {
+        const std::size_t expected_size = method == "bridge.test_done" ? 1 : 2;
+        need(GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) > 0 && p.size() == expected_size &&
                  text(p, "instanceId") == runtime->instance(),
              "SECURITY_DENIED", "Test control unavailable");
         return;
@@ -881,11 +886,110 @@ json save_copy(AcDbDatabase *db, const json &p) {
     return result;
 }
 
+#ifdef AUTOCAD_MCP_TESTING
+// Fixed actions for our synthetic desktop acceptance process. No raw commands or paths
+// can be supplied by the caller; this code is excluded from normal builds.
+json desktop_test_action(const json &p) {
+    need(acDocManager->isApplicationContext(), "DOC_BUSY", "Test action needs application context");
+    const auto root = runtime->grant_file().parent_path().parent_path().parent_path();
+    need(root.parent_path().filename() == L"desktop-runs", "SECURITY_DENIED", "Not a desktop test session");
+    auto find_document = [&](const wchar_t *name) -> AcApDocument * {
+        const auto expected = (root / name).lexically_normal().wstring();
+        auto iter = acDocManager->getDocumentIterator();
+        for (; !iter->done(); iter->step()) {
+            auto doc = iter->document();
+            if (_wcsicmp(std::filesystem::path(doc->fileName()).lexically_normal().c_str(),
+                         expected.c_str()) == 0)
+                return doc;
+        }
+        return nullptr;
+    };
+    auto primary = find_document(L"primary.dwg");
+    need(primary != nullptr, "SECURITY_DENIED", "Synthetic primary drawing is not open");
+    const auto action = text(p, "action");
+    if (action == "quit") {
+        // A user may open another file while the visible test window is left open.
+        // Never let synthetic cleanup close an unrelated drawing in that process.
+        auto iter = acDocManager->getDocumentIterator();
+        for (; !iter->done(); iter->step()) {
+            const auto path = std::filesystem::path(iter->document()->fileName()).lexically_normal();
+            const bool ours = _wcsicmp(path.c_str(), (root / L"primary.dwg").c_str()) == 0 ||
+                              _wcsicmp(path.c_str(), (root / L"secondary.dwg").c_str()) == 0;
+            need(ours, "SECURITY_DENIED", "Unrelated drawing is open; synthetic cleanup is refused");
+        }
+    }
+    if (action == "open_secondary") {
+        need(find_document(L"secondary.dwg") == nullptr);
+        cad(acDocManager->appContextOpenDocument((root / L"secondary.dwg").c_str()));
+        auto secondary = find_document(L"secondary.dwg");
+        need(secondary != nullptr, "EXECUTION_FAILED", "Synthetic secondary did not open");
+        return doc_info(secondary);
+    }
+    if (action == "activate_primary" || action == "activate_secondary") {
+        auto target = action == "activate_primary" ? primary : find_document(L"secondary.dwg");
+        need(target != nullptr, "DOC_NOT_FOUND", "Synthetic drawing is closed");
+        cad(acDocManager->activateDocument(target));
+        return identity(target->database());
+    }
+    if (action == "context") {
+        resbuf value{};
+        need(acedGetVar(L"CMDACTIVE", &value) == RTNORM);
+        json result = {{"commandActive", value.resval.rint}, {"primaryQuiescent", primary->isQuiescent()}};
+        if (auto active = acDocManager->mdiActiveDocument())
+            result["active"] = identity(active->database());
+        if (auto current = acDocManager->curDocument())
+            result["current"] = identity(current->database());
+        return result;
+    }
+    if (action == "begin_line" || action == "cancel_line" || action == "undo_primary" || action == "quit") {
+        need(acDocManager->mdiActiveDocument() == primary, "SECURITY_DENIED",
+             "Synthetic primary must be active");
+        if (action != "cancel_line")
+            need(primary->isQuiescent(), "DOC_BUSY", "Test drawing is busy");
+        const wchar_t *command = action == "begin_line"     ? L"_.LINE\n"
+                                 : action == "cancel_line"  ? L"\x03\x03"
+                                 : action == "undo_primary" ? L"_.UNDO\n1\n"
+                                                            : L"MCPSTOP\n_.QUIT\n_N\n";
+        cad(acDocManager->sendStringToExecute(primary, command, true, false, false));
+        return {{"queued", true}};
+    }
+    if (action == "close_secondary") {
+        auto secondary = find_document(L"secondary.dwg");
+        need(secondary != nullptr, "DOC_NOT_FOUND", "Synthetic secondary is not open");
+        cad(acDocManager->appContextCloseDocument(secondary));
+        return {{"closed", true}};
+    }
+    if (action == "lock_layer" || action == "unlock_layer") {
+        auto target = identity(primary->database());
+        DocumentContext context(target, true);
+        auto db = primary->database();
+        Transaction tx(db);
+        auto layers = tx.get<AcDbLayerTable>(db->layerTableId(), AcDb::kForWrite);
+        AcDbObjectId id;
+        if (layers->getAt(L"MCP_LOCKED", id) != Acad::eOk) {
+            auto record = std::make_unique<AcDbLayerTableRecord>();
+            cad(record->setName(L"MCP_LOCKED"));
+            cad(layers->add(id, record.get()));
+            auto raw = record.release();
+            cad(tx.manager->addNewlyCreatedDBRObject(raw, true));
+        }
+        tx.get<AcDbLayerTableRecord>(id, AcDb::kForWrite)->setIsLocked(action == "lock_layer");
+        tx.commit();
+        return {{"locked", action == "lock_layer"}};
+    }
+    throw Failure{"VALIDATION_FAILED", "Unknown synthetic test action"};
+}
+#endif
+
 json execute(const json &request) {
     auto method = request.at("method").get<std::string>();
     const auto &p = request.at("params");
     try {
         validate(method, p);
+#ifdef AUTOCAD_MCP_TESTING
+        if (method == "bridge.test_action")
+            return desktop_test_action(p);
+#endif
         if (method == "acad_list_instances")
             return {{"instances",
                      json::array({{{"instanceId", runtime->instance()}, {"backend", "objectarx"}}})}};
@@ -1097,6 +1201,10 @@ void start() {
         auto allowed = names;
         if (GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) > 0)
             allowed.push_back("bridge.test_done");
+#ifdef AUTOCAD_MCP_TESTING
+        if (GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) > 0)
+            allowed.push_back("bridge.test_action");
+#endif
         runtime = std::make_unique<mcp::Runtime>(root, schedule, allowed);
         output_root = runtime->grant_file().parent_path() / "output";
         std::filesystem::create_directory(output_root);
