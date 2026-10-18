@@ -1,0 +1,132 @@
+{
+  "name": "notched-plate",
+  "source": "User-confirmed dimensions; original photo is not bundled or sent to providers.",
+  "lengthUnit": "mm",
+  "coordinateSystem": "WCS",
+  "dimensions": {
+    "width": 80,
+    "height": 40,
+    "sideInnerDistance": 50,
+    "sideOpening": 20,
+    "middleNotchWidth": 20,
+    "middleInnerDistance": 30,
+    "holeDiameter": 10
+  },
+  "vertices": [
+    [
+      -40,
+      -20,
+      0
+    ],
+    [
+      -10,
+      -20,
+      0
+    ],
+    [
+      -10,
+      -15,
+      0
+    ],
+    [
+      10,
+      -15,
+      0
+    ],
+    [
+      10,
+      -20,
+      0
+    ],
+    [
+      40,
+      -20,
+      0
+    ],
+    [
+      40,
+      -10,
+      0
+    ],
+    [
+      25,
+      -10,
+      0
+    ],
+    [
+      25,
+      10,
+      0
+    ],
+    [
+      40,
+      10,
+      0
+    ],
+    [
+      40,
+      20,
+      0
+    ],
+    [
+      10,
+      20,
+      0
+    ],
+    [
+      10,
+      15,
+      0
+    ],
+    [
+      -10,
+      15,
+      0
+    ],
+    [
+      -10,
+      20,
+      0
+    ],
+    [
+      -40,
+      20,
+      0
+    ],
+    [
+      -40,
+      10,
+      0
+    ],
+    [
+      -25,
+      10,
+      0
+    ],
+    [
+      -25,
+      -10,
+      0
+    ],
+    [
+      -40,
+      -10,
+      0
+    ]
+  ],
+  "circle": {
+    "center": [
+      0,
+      0,
+      0
+    ],
+    "radius": 5
+  },
+  "expected": {
+    "lineCount": 20,
+    "circleCount": 1,
+    "perimeter": 320,
+    "areaWithoutHole": 2400,
+    "areaWithHole": 2321.460183660255
+  }
+}

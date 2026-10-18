@@ -1,11 +1,19 @@
 import { McpServer, type ServerContext } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { readFile } from 'node:fs/promises';
 import { BridgeClient } from './bridge.js';
 import { BridgeError } from './protocol.js';
 import { descriptions, mutating, toolNames, toolSchemas, validateTool } from './tools.js';
 
 export function createServer(bridge: BridgeClient): McpServer {
   const server = new McpServer({ name: 'autocad-mcp', version: '0.1.0' });
+  // Fixed public bundle resources: no caller-supplied filesystem paths or credentials.
+  for (const [name, relative] of [['autocad-mcp-skill', 'SKILL.md'], ['autocad-mcp-contract', 'references/tools.md']] as const) {
+    const uri = `skill://autocad-mcp/autocad-mcp/${relative}`;
+    server.registerResource(name, uri, { mimeType: 'text/markdown', description: 'Bundled AutoCAD MCP workflow; contains no pairing data.' }, async requested => ({
+      contents: [{ uri: requested.href, mimeType: 'text/markdown', text: await readFile(new URL(`../../skills/autocad-mcp/${relative}`, import.meta.url), 'utf8') }]
+    }));
+  }
   for (const name of toolNames) {
     server.registerTool(name, {
       description: descriptions[name], inputSchema: toolSchemas[name],
