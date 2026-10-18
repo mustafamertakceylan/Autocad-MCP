@@ -14,25 +14,26 @@
 |---|---|---|
 | K-01 | Ad ve konum | Proje adı **Autocad MCP**; çalışma klasörü bu depo. |
 | K-02 | GitHub | Depo adı `Autocad-MCP`; görünürlük **private**. Public ancak açık kullanıcı talebiyle. |
-| K-03 | Platform | Tam AutoCAD 2027; Windows ve macOS. Mac işlemci mimarisi belirtilmedi. |
+| K-03 | Platform | Tam AutoCAD 2027; Windows ve macOS. Kullanıcı 2026-10-18 tarihinde Mac'in Apple Silicon (M serisi) olduğunu belirtti; ilk Mac test hedefi arm64. |
 | K-04 | Kapsam | Yeni 2B/3B çizim ve mevcut çizimi inceleme/düzenleme birlikte hedeflenir. |
 | K-05 | Yerel köprü | Her kullanıcının bilgisayarında yerel köprü; zorunlu merkezi hesap/sunucu yok. |
 | K-06 | Veri akışı | Yerel köprü, bulut AI sağlayıcısının veri akışını otomatik yerelleştirmez. AI istemcisinin buluta veri göndermesi ayrı veri akışıdır. |
 | K-07 | Ürün yönü | İleride kurulabilir açık kaynak ürün hedeflenir. |
 | K-08 | Lisans | Lisans kesinleşmedi. Apache-2.0 yalnız öneridir; `LICENSE` yazılmaz. |
-| K-09 | Güncel izin | Yalnız depo kurulumu, araştırma ve planlama belgeleri. Kodlama, kurulum, derleme, CI, SDK kurulumu ve AutoCAD bağlantısı yok. |
-| K-10 | Dil | Kullanıcı iletişimi ve proje belgeleri Türkçe. MCP araç metinlerinin dili uygulama öncesinde netleştirilecek. |
+| K-09 | Güncel izin | Kullanıcı Faz 2 Windows/ortak kodunu Codex'in kendisinin geliştirmesini istedi; bağımlılık, SDK, derleme ve izole Windows AutoCAD testi onaylı. Delegasyon, Mac bağlantısı, commit/push/yayın yok. |
+| K-10 | Dil | Kullanıcı iletişimi ve proje belgeleri Türkçe. Prototip araç açıklamaları teknik varsayılan olarak İngilizce; kullanıcı belgeleri Türkçe. |
 | K-11 | Commit dili | Bu depo için Türkçe; kapsamlar `init`, `agents`, `plan`, `docs`, ileride `bridge`, `plugin`, `mcp`, `installer`. |
-| K-12 | Test ortamı | Henüz kurulmadı. Gelecekte yalnız sahte veya açık örnek çizimlerin kopyaları; gerçek müşteri/üretim dosyası yok. |
+| K-12 | Test ortamı | Stok şablon kopyalarıyla izole Core Console profili; gerçek müşteri/üretim dosyası yok. |
 | K-13 | Yayın | GitHub Pages, Release ve paket yayını yok; depo kullanıcı istemeden public yapılmaz. |
-| K-14 | Mac | Mac derlemesi ve canlı testi ileride gerekir; kullanıcı o iş için onay vermeden Mac'e bağlanılmaz. |
+| K-14 | Mac | Kullanıcı Mac'i ayrı Faz M olarak ayırdı. Güncel Faz 2–6 Windows kapsamındadır; Mac kabulü Windows ilerlemesini engellemez. Faz M ayrıca başlatılır; uygunluk/onay olmadan Mac'e bağlanılmaz. |
 | K-15 | Hesap/imza | SDK koşullarını kabul etmek, hesap açmak, ödeme ve imzalama hesabı işlemleri kullanıcıya aittir. |
 | K-16 | Önceki araştırma | `C:\Dev\Other Projects\AutoCAD-MCP` araştırma klasörü korunur; bu projenin kökü değildir. |
 | K-17 | Raporlama | Her özellik; hedef, platform/API ve gerçek test durumuyla raporlanır. Serbest komut/LISP erişimi tam test kapsamı sayılmaz. |
+| K-18 | Bu belge işindeki ajanlar | Kullanıcı EVREN MiMo ve EVREN DeepSeek kullanılmasını istedi. Önce MiMo denenir; çalışmazsa ayrı DeepSeek Pro ajanına geçilebilir. Paylaşılan kapsam teknik plan/kural/görev belgeleridir; sır veya kişisel çizim yok. |
 
 ## 2. Teknik öneriler (karar değil)
 
-Bu maddeler yönetici tarafından belirlenen tasarım yönleridir. Hiçbiri uygulanmadı veya canlı test edilmedi; karar gibi okunmamalıdır.
+Bu maddeler yönetici tarafından belirlenen tasarım yönleridir. Faz 1 tasarım yönleridir. Windows prototipinde uygulanan alt küme aşağıdaki §4'te ayrılır; Mac ve ileri modüller öneri olarak kalır.
 
 | No | Öneri | Gerekçe / sınır |
 |---|---|---|
@@ -56,22 +57,22 @@ Bu maddeler yönetici tarafından belirlenen tasarım yönleridir. Hiçbiri uygu
 
 | No | Açık karar | Not |
 |---|---|---|
-| A-01 | Mac işlemci mimarisi | Universal/arm64/x86_64; kullanıcı belirtecek. |
+| A-01 | Intel/universal Mac dağıtımı | Apple Silicon/arm64 ilk test hedefi olarak netleşti; Intel/universal desteği ayrıca değerlendirilecek. |
 | A-02 | AutoCAD LT desteği | İlk hedef tam AutoCAD 2027; LT ayrı karar. |
 | A-03 | Lisans | Apache-2.0 yalnız öneri. |
 | A-04 | Depo görünürlüğü | Şu an private; değişiklik açık kullanıcı talebi gerektirir. |
 | A-05 | Streamable HTTP/uzak erişim | İlk sürümde yok; ayrı kapsam. |
 | A-06 | Bulut istemci erişimi | Ayrı veri akışı ve gizlilik/güvenlik incelemesi. |
-| A-07 | MCP araç metinlerinin dili | Uygulama öncesi netleştirilecek. |
+| A-07 | MCP araç metinlerinin dili | Prototip İngilizce; ürün yerelleştirmesi açık. |
 | A-08 | Keyfi komut/LISP | Varsayılan kapalı önerisi; ayrı yetki ve güvenlik incelemesi. |
 | A-09 | Yetki profillerinin ayrıntısı | Profil adları/kuralları kesin değil. |
-| A-10 | Çoklu AutoCAD instance davranışı | Hedef seçimi ve belirsizlik politikası. |
-| A-11 | Birim/koordinat politikası | Belgeden okuma; bilinmiyorsa yazma yok önerisi. |
+| A-10 | Çoklu AutoCAD instance davranışı | [Sözleşme taslağı](ILETISIM_SOZLESMESI.md) açık instance/belge/epoch hedefi önerir; uygulama ve canlı test bekleniyor. |
+| A-11 | Birim/koordinat politikası | Taslak ilk sürümde WCS ve açık birim ister. Fiziksel birim istenip INSUNITS bilinmiyorsa yazma reddedilir; açık drawing_unit seçimi ayrı durumdur. Windows prototipinde uygulandı; mm/metre/birimsiz testleri kabul belgesinde. |
 | A-12 | 3B kapsamı | İlkel nesnelerle başlama önerisi; ileri modelleme açık. |
 | A-13 | Layout/PDF kapsamı | Plot aygıtı ve platform farkları test edilmeli. |
 | A-14 | Xref okuma/yazma sınırı | Önce envanter/okuma önerisi; yazma ayrı karar. |
 | A-15 | AutoCAD 2027 dışı sürüm desteği | Önce 2027; genişletme ayrı karar. |
-| A-16 | MCP SDK/spesifikasyon sürümü | Sürüm sabitleme ve uyumluluk testi gerekir. |
+| A-16 | MCP SDK/spesifikasyon sürümü | Server/client 2.3.1 sabit. Resmî SDK istemcisiyle stdio geçti; Claude/Codex ve eski sürüm istemciler ayrı Faz 4 kabulü. |
 | A-17 | Dağıtım kanalı | npm/paketli çalıştırılabilir; ilk sürüm için en dar yol. |
 | A-18 | İmzalama/notarization kimliği | Kullanıcı sağlayacak; ayrı iş. |
 | A-19 | Telemetri/günlük saklama | Varsayılan en az veri önerisi; ayrı karar. |
@@ -81,12 +82,17 @@ Bu maddeler yönetici tarafından belirlenen tasarım yönleridir. Hiçbiri uygu
 | A-23 | Otomatik güncelleme | İlk sürümde varsayılan değil önerisi. |
 | A-24 | Süreç yaşam döngüsü | stdio sunucusunu istemcinin otomatik başlatması önerilir; eklenti etkinleştirme, kapanma ve yeniden bağlanma teknik denemede netleşecek. Kullanıcıdan ayrı uygulama penceresi açması beklenmez. |
 
-## 4. Uygulama izni ve sıradaki adım
+## 4. Faz 2 uygulama tercihleri ve gerçek sınır
 
-- **Mevcut izin yalnız belge işidir.** Bu dosya kodlama, kurulum, derleme, CI, SDK kurulumu veya AutoCAD bağlantısı izni vermez.
-- **Sonraki somut adım:** özellik envanteri ve API sözleşmesi. Bu adım da belge/araştırma düzeyindedir; canlı AutoCAD testi ve kod içermez.
-- **Kod ancak kullanıcı ayrıca başlatırsa** yazılır. Önceki bir izin sonraki işlere aktarılmaz.
-- Uygulayıcılar commit/push yapmaz; commit yalnız kullanıcı açıkça istediğinde yönetici tarafından yapılır.
+- Node 24+, TypeScript 7.0.2; resmî MCP server/client 2.3.1, Zod 4.6.7. Sürümler manifest ve lock dosyasında sabit.
+- Windows: ObjectARX 2027 C++20 modül, named pipe, stdio. Mac native eklenti/Unix sunucusu henüz uygulanmadı; native Mac eşleştirmesi kapalıdır.
+- Kullanıcının seçtiği eşleştirme dosyası + kullanıcıya özel DACL + 256 bit sır ile nonce/HMAC-SHA256. 24 saatlik oturum; MCPSTOP dosyayı kaldırır. Dosyaya erişebilen aynı kullanıcı süreci yetkiyi kullanabilir; süreç bazlı işletim sistemi sandbox'ı iddiası yoktur.
+- Her çağrı açık instance/belge/epoch hedefler. Yazma revision ve operationId ister. İşlem kayıtları bellekte, en fazla 10000; yeniden başlatma sonrası kalıcılık yok. Kör tekrar yok.
+- Ayrı DWG: yalnız oturumun private output kökü (`test-output`), düz yeni dosya adı, üzerine yazma yok. Side-database snapshot, yeniden açma/geometri karşılaştırması ve no-replace yayın kullanılır.
+- Ana thread'e Win32 mesaj sevki; application context ve belge kilidi. Core Console test pompası aynı mesaj yolunu kullanır; masaüstü async context ve sekme geçişi ayrıca sınanacak.
+- `bridge.cancel` ve kalıcı işlem günlüğü uygulanmadı. MCP iptali yerel beklemeyi keser; gönderilmiş mutasyonun sonucu unknown olabilir.
+- [Kabul belgesi](TEKNIK_DENEME_KABUL.md) gerçek sonuçları ve çalıştırılmayan kapıları ayırır. Mac ayrı Faz M'ye taşındı; Faz 2 yalnız açık Windows kabul kapıları nedeniyle devam ediyor.
+- Commit/push/yayın için bu işte izin yoktur. Önceki belge işindeki ajan kayıtları tarihsel kayıttır; Faz 2 yöneticinin kendisi tarafından yazıldı.
 
 ## 5. Kaynaklar
 

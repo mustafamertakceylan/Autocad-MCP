@@ -1,6 +1,6 @@
 # Plan
 
-> Durum: 2026-10-18 planlama taslağı. **Uygulama izni yok.** Bu belge kullanıcı kararlarını, teknik önerileri ve henüz karar olmayan noktaları ayırır. Önerilerin hiçbiri gerçek AutoCAD ile doğrulanmadı; "çalışıyor" veya "destekleniyor" olarak okunmamalıdır.
+> Durum: 2026-10-18. Faz 2 Windows/ortak prototipi uygulandı; gerçek Core Console kanıtları [kabul belgesinde](TEKNIK_DENEME_KABUL.md). Mac kullanıcı isteğiyle ayrı Faz M'ye taşındı; güncel fazlar Windows üzerinden ilerler. Bu plan gelecekteki fazlara, commit veya yayına izin vermez. Aşağıdaki genel ürün yönü ile sınanmış prototip alt kümesi ayrıdır.
 
 İlgili belgeler: [Kararlar](KARARLAR.md), [Yetenek matrisi](YETENEK_MATRISI.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md), [Ajan kuralları](../AGENTS.md).
 
@@ -15,20 +15,20 @@ Başarı ölçütü, istenen işlemi doğru hedefte ve belirlenmiş birimlerle u
 | Karar | Ayrıntı |
 |---|---|
 | Ad ve konum | Proje adı **Autocad MCP**; çalışma klasörü bu depo. GitHub adı `Autocad-MCP`, görünürlük **private**. Public yalnız açık kullanıcı talebiyle. |
-| Platform | Tam AutoCAD 2027; hem Windows hem macOS. Mac işlemci mimarisi belirtilmedi. |
+| Platform | Tam AutoCAD 2027; hem Windows hem macOS. İlk Mac test hedefi kullanıcı tarafından Apple Silicon (M serisi, arm64) olarak belirtildi. |
 | Kapsam | Yeni 2B/3B çizim ve mevcut çizimi inceleme/düzenleme birlikte hedeflenir. |
 | Yerel köprü | Her kullanıcının bilgisayarında yerel köprü; zorunlu merkezi hesap/sunucu yok. |
 | Veri akışı | Yerel köprü, bulut AI sağlayıcısının veri akışını otomatik yerelleştirmez. AI istemcisinin buluta veri göndermesi ayrı veri akışıdır. |
 | Ürün yönü | İleride kurulabilir açık kaynak ürün. Lisans kesinleşmedi; Apache-2.0 yalnız öneridir ve `LICENSE` yazılmaz. |
-| Güncel izin | Yalnız depo kurulumu, araştırma ve planlama belgeleri. Kodlama, kurulum, derleme, CI, SDK kurulumu, AutoCAD bağlantısı yok. |
-| Dil | Kullanıcı iletişimi ve proje belgeleri Türkçe. MCP araç metinlerinin dili uygulama öncesinde netleştirilecek. |
-| Test ortamı | Henüz kurulmadı. Gelecekte yalnız sahte veya açık örnek çizimlerin kopyaları; gerçek müşteri/üretim dosyası yok. |
+| Güncel izin | Faz 2 Windows/ortak kod, yerel bağımlılık/SDK, derleme ve izole AutoCAD testi onaylı; kullanıcı “kendin yap” dedi. Mac, commit/push/yayın yok. |
+| Dil | Kullanıcı iletişimi ve proje belgeleri Türkçe. Prototip MCP açıklamaları İngilizce; ürün yerelleştirmesi açık. |
+| Test ortamı | İzole Core Console profili ve sentetik stok şablon kopyaları; gerçek müşteri/üretim dosyası yok. |
 | Mac | Mac derlemesi ve canlı testi ileride gerekir; kullanıcı o iş için onay vermeden Mac'e bağlanılmaz. |
 | Hesap/imza | SDK koşullarını kabul etmek, hesap açmak, ödeme ve imzalama hesabı işlemleri kullanıcıya aittir. |
 
-## 3. Teknik öneriler (karar değil, uygulanmadı)
+## 3. Teknik yön ve ürün önerileri
 
-Aşağıdakiler yönetici tarafından belirlenen tasarım yönleridir. Hiçbiri uygulanmadı veya canlı test edilmedi.
+Aşağıdakiler ürünün tasarım yönleridir. Faz 2 Windows alt kümesi §12 ve kabul belgesinde kanıtlıdır; Mac ve ileri modüller henüz uygulanmadı.
 
 | No | Öneri | Gerekçe / sınır |
 |---|---|---|
@@ -93,11 +93,11 @@ stdio için port açılmaz. Bir port/adres üzerinden HTTP bağlantısı istenir
 
 | Bileşen | Görev | Durum |
 |---|---|---|
-| MCP sunucusu | MCP istemcisine tipli araçlar sunmak; doğrulama, hata eşleme, işlem kimliği, zaman aşımı | Öneri; uygulanmadı |
-| Yerel köprü | Sunucu ile eklenti arasında yerel IPC; el sıkışma, sürüm denetimi, istek/yanıt/olay | Öneri; uygulanmadı |
-| AutoCAD eklentisi | C++/ObjectARX; ana iş parçacığı sevkıyatı, belge işlemleri, transaction/undo, geri okuma | Öneri; uygulanmadı |
-| Kurulum/paketleme | Platforma özel eklenti ve sunucu kurulumu, sürüm uyumu, kaldırma | Öneri; uygulanmadı |
-| Tanılama | Sürüm/platform/özellik bilgisi, güvenli günlük, bağlantı durumu | Öneri; uygulanmadı |
+| MCP sunucusu | MCP istemcisine tipli araçlar sunmak; doğrulama, hata eşleme, işlem kimliği, zaman aşımı | Ürün yönü; prototip durumu §12 ve kabul belgesinde |
+| Yerel köprü | Sunucu ile eklenti arasında yerel IPC; el sıkışma, sürüm denetimi, istek/yanıt/olay | Ürün yönü; prototip durumu §12 ve kabul belgesinde |
+| AutoCAD eklentisi | C++/ObjectARX; ana iş parçacığı sevkıyatı, belge işlemleri, transaction/undo, geri okuma | Ürün yönü; prototip durumu §12 ve kabul belgesinde |
+| Kurulum/paketleme | Platforma özel eklenti ve sunucu kurulumu, sürüm uyumu, kaldırma | Ürün yönü; prototip durumu §12 ve kabul belgesinde |
+| Tanılama | Sürüm/platform/özellik bilgisi, güvenli günlük, bağlantı durumu | Ürün yönü; prototip durumu §12 ve kabul belgesinde |
 
 ### 5.2 Neden bu yön
 
@@ -107,7 +107,7 @@ Autodesk'in 2027 API tablosu ObjectARX ve AutoLISP'i Windows/macOS için, .NET v
 - ObjectARX ortak kaynak + platforma özel derleme, iki platform için en tutarlı yön gibi görünür; ancak Mac API alt kümesi özellik bazında doğrulanmalıdır.
 - TypeScript MCP sunucusu, MCP SDK ve stdio ile dış katmanı platformdan bağımsız tutar; platform bağımlılığı eklentide kalır.
 
-Bu bir uygulanabilirlik kanıtı değildir; ilk teknik deneme iki platformda da yapılmadan "çalışır" denemez.
+Windows Core Console prototipi sınırlı uygulanabilirlik kanıtıdır; Windows ürünü için masaüstü, istemci ve kurulum kabulü gerekir. Mac desteği ayrı Faz M'de kanıtlanır ve Windows kabulünü bekletmez.
 
 ### 5.3 Bağlantı ve el sıkışma
 
@@ -183,7 +183,7 @@ Aşağıdaki kapsamlar öneridir; kesin destek iddiası değildir. Ayrıntı ve 
 
 ## 7. Hata durumları
 
-Aşağıdaki kodlar tasarım önerisidir; uygulanmadı. Amaç, "sessiz başarı" yerine açık ve uzlaştırılabilir hata üretmektir.
+Aşağıdaki katalog ürün tasarımıdır; yalnız bir alt küme prototipte uygulanmıştır. Gerçek hata testleri kabul belgesindedir. Amaç, "sessiz başarı" yerine açık ve uzlaştırılabilir hata üretmektir.
 
 | Kod (öneri) | Anlam | Beklenen davranış |
 |---|---|---|
@@ -233,47 +233,70 @@ MCP TypeScript SDK ve spesifikasyon sürümleri arasında farklar olabilir; sür
 | Katman | Ne | Durum |
 |---|---|---|
 | Belge/statik | Bağlantı, kapsam, tutarlılık, dosya listesi | Bu görevde yalnız belge kontrolü yapıldı; uygulama testi değil. |
-| Birim | Protokol çerçeveleme, doğrulama, hata eşleme, durum makinesi | Altyapı yok; çalıştırılmadı. |
-| Sözleşme | MCP araç şemaları, sunucu-eklenti protokolü, sürüm uyumu | Altyapı yok; çalıştırılmadı. |
-| Entegrasyon | Sahte eklenti/AutoCAD test double ile akış | Altyapı yok; çalıştırılmadı. |
-| Canlı Windows | Gerçek AutoCAD 2027 üzerinde işlem ve geri okuma | Çalıştırılmadı. |
-| Canlı macOS | Gerçek AutoCAD 2027 üzerinde işlem ve geri okuma | Çalıştırılmadı; Mac mimarisi açık. |
-| Hata enjeksiyonu | Bağlantı kopması, meşgul belge, zaman aşımı, izin reddi, undo hatası | Çalıştırılmadı. |
-| Regresyon çizimleri | Yalnız sahte/açık örnek çizim kopyaları | Test seti yok; çalıştırılmadı. |
+| Birim | Protokol çerçeveleme, doğrulama, hata eşleme, durum makinesi | Windows/ortak prototip testleri mevcut; ayrıntı kabul belgesinde. |
+| Sözleşme | MCP araç şemaları, sunucu-eklenti protokolü, sürüm uyumu | Windows/ortak prototip testleri mevcut; ayrıntı kabul belgesinde. |
+| Entegrasyon | Sahte eklenti/AutoCAD test double ile akış | Windows/ortak prototip testleri mevcut; ayrıntı kabul belgesinde. |
+| Canlı Windows | Gerçek AutoCAD 2027 üzerinde işlem ve geri okuma | Core Console: mm ve metre için UNDO dahil 30+30; birimsiz için 9 kontrol geçti. Masaüstü UI çalıştırılmadı. |
+| Canlı macOS | Apple Silicon üzerinde gerçek AutoCAD 2027 ile işlem ve geri okuma | Çalıştırılmadı; Mac'e bağlantı için ayrıca uygunluk/onay gerekir. |
+| Hata enjeksiyonu | Bağlantı kopması, meşgul belge, zaman aşımı, izin reddi, undo hatası | Mock IPC timeout/iptal/imza retleri geçti; native kapsamlı enjeksiyon ve modal durum çalıştırılmadı. |
+| Regresyon çizimleri | Yalnız sahte/açık örnek çizim kopyaları | Stok şablondan mm/metre/birimsiz sentetik kopyalarla geçildi; büyük/karmaşık çizim yok. |
 | Paketleme/temiz cihaz | Kurulum, kaldırma, sürüm yükseltme | Paket yok; çalıştırılmadı. |
 | Güvenlik | Yerel IPC izni, yol/komut enjeksiyonu, keyfi LISP kapalılığı, profil sınırları | Çalıştırılmadı. |
 | Performans/büyük çizim | Büyük belge, çok nesne, bellek/süre | Çalıştırılmadı. |
 
-Test komutu, çerçeve veya CI henüz yok. Bir test katmanı "geçti" denmeden önce gerçek çıktı ve ortam kaydı gerekir. Canlı AutoCAD testi olmayan otomatik test, "tam destek" kanıtı sayılmaz.
+`npm test`, CTest ve açık opt-in canlı Windows harness mevcut. CI henüz yok. Bir test katmanı "geçti" denmeden önce gerçek çıktı ve ortam kaydı gerekir. Canlı AutoCAD testi olmayan otomatik test, "tam destek" kanıtı sayılmaz.
 
 ## 11. Paketleme ve dağıtım (öneri)
 
 - **Windows:** ObjectARX eklentisi ve bağımlılıkları, kurulum paketi, AutoCAD 2027 bundle/autoload, sürüm denetimi, imzalama, kaldırma.
-- **macOS:** Eklenti bundle'ı, kurulum paketi, notarization, imzalama, kaldırma. İşlemci mimarisi (universal/arm64/x86_64) açık karar.
+- **macOS:** Eklenti bundle'ı, kurulum paketi, notarization, imzalama, kaldırma. İlk test hedefi Apple Silicon/arm64; Intel ve universal paketler ayrıca değerlendirilecek.
 - **MCP sunucusu:** npm paketi veya paketlenmiş çalıştırılabilir; Node çalışma zamanı bağımlılığı, yapılandırma ve sürüm sabitleme açık karar.
 - **Uyumluluk:** Sunucu-eklenti protokol sürümü, AutoCAD 2027 sürüm aralığı ve işletim sistemi sürümleri matriste tutulur.
 - **Yükseltme/geri alma:** Eski eklentiyle yeni sunucu karışımı reddedilmeli; yükseltme ve kaldırma test edilmeli.
 - Otomatik güncelleme ilk sürümde varsayılan değil; ayrı karar.
 - Paketleme, imzalama ve dağıtım bu aşamada yapılmaz.
 
-## 12. Aşamalar ve kabul ölçütleri
+## 12. Fazlar, çıktılar ve tamamlanma ölçütleri
 
-Süre tahmini verilmez. Her aşama, önceki aşamanın kanıtı olmadan başlamaz.
+**Güncel konum:** 2A MCP/IPC çekirdeği ve 2B Windows ObjectARX prototipi yazıldı. 2D'de mm/metre/birimsiz, tek işlem UNDO, revision, dedup, ayrı DWG geometri geri okuma ve hash/dirty koruması Core Console'da geçti. Masaüstü dispatcher/çoklu sekme ve kapsamlı dosya yarışı kapıları açık. Eski 2C Mac paketi ayrı Faz M'ye taşındı ve Windows'un bitiş koşulundan çıkarıldı. Faz 2, kalan Windows kabul kapıları nedeniyle devam ediyor. Kullanıcı onayıyla tek kısa [durum kaydı](../FAZ2_DURUM.md) tutulur.
 
-| Aşama | Amaç | Çıktı | Kabul ölçütü |
-|---|---|---|---|
-| 1. Envanter | API, araç zinciri, platform ve güvenlik sınırlarını belgelemek | Kanıtlı yetenek matrisi, açık kararlar, test çizimi listesi, protokol taslağı | Her modül için "belgeli / doğrulanmadı / desteklenmiyor" ayrımı kanıtla dolu; kod iddiası yok. |
-| 2. İki platformda 2B+3B teknik deneme | En küçük dikey dilimi gerçek AutoCAD'de denemek | Windows ve Mac'te el sıkışma, belge okuma, basit 2B nesne, basit 3B ilkel oluşturma ve geri okuma | İki platformda da canlı kanıt; başarısızlıklar ve platform farkları kayıtlı; üretim iddiası yok. |
-| 3. Güvenilir inceleme/düzenleme | Çekirdek sorgu/düzenleme güvenilirliği | Sorgu, düzenleme, transaction/undo, işlem kimliği, zaman aşımı/bilinmiyor, geri okuma | Tekrarlanabilir testler; hata enjeksiyonu; kısmi/undo/zaman aşımı durumları kanıtlı. |
-| 4. İlk kullanılabilir sürüm | Kurulabilir çekirdek ürün | Windows ve Mac kurulumu, çekirdek modüller, belgeler, güvenli varsayılanlar | Temiz cihazda kurulum ve temel iş akışı; bilinen sınırlar listesi; matris güncel. |
-| 5. İleri modüller | 3B ileri, layout/PDF, xref/veri, otomasyon | Modül bazlı yetenekler ve testler | Her modül için canlı test kanıtı; otomasyon için ayrı güvenlik incelemesi. |
-| 6. Temiz cihazda dağıtım | Yayın kalitesinde kurulum | İmzalı/notarized paketler, yükseltme/kaldırma, destek matrisi | Geliştirici araçları olmayan temiz Windows ve Mac cihazda kurulum, yükseltme, kaldırma ve geri alma kanıtı. |
+1–6 numaralı fazlar güncel Windows hattıdır; mevcut numaralar korunur. Mac ayrı Faz M hattıdır; Windows fazlarının bitişine bağımlılık eklemez. Süre tahmini verilmez. Bir faz, yalnız belge yazıldığı için geliştirme/test açısından tamamlanmış sayılmaz.
+
+| Faz | Hedef | Somut teslim | Fazın bitiş ölçütü | Şu an |
+|---|---|---|---|---|
+| **1 — Araştırma ve tasarım** | Ne geliştireceğimizi ve sınırlarını belirlemek | Mevcut çözüm araştırması, 42 işlem envanteri, 14 araç sözleşmesi taslağı, platform matrisi ve kabul senaryoları | Kaynaklı adaylar ve açık teknik riskler ayrılmış; ilk geliştirilecek dilim tanımlı | Belgeler hazır; Windows sınırlı dikey dilim doğrulandı |
+| **2 — Çalışan ilk köprü** | AI → MCP → yerel eklenti → AutoCAD akışını kanıtlamak | TypeScript MCP çekirdeği; Windows eklentisi; belge okuma, çizgi/çember/kutu, taşıma ve geri okuma | Windows'ta sentetik çizim üzerinde gerçek ölçüler, doğru belge hedefi ve ayrı kayıt/UNDO senaryoları kanıtlı; Windows kabul kapıları çözülmüş | Core Console prototipi kanıtlı; Windows masaüstü/çoklu belge ve kalan kabul kapıları açık |
+| **3 — Güvenilir çekirdek** | Mevcut çizimde güvenilir sorgu ve düzenleme | Yetki, revision/epoch, tekilleştirme, transaction/undo, iptal/zaman aşımı ve güvenli dosya çıktısı | Tekrar istek ikinci nesne üretmiyor; yanlış/eski hedefe yazmıyor; hata/kısmi etkiyi doğru bildiriyor; negatif senaryolar geçiyor | Başlanmadı |
+| **4 — İlk kullanılabilir sürüm (MVP)** | Kullanıcının AI istemcisinden temel işleri yapabilmesi | İlk 14 araç için doğrulanmış destek durumu, Windows pilot kurulumu, Claude/Codex bağlantı örnekleri ve kullanım belgesi | Yeni ve mevcut sentetik çizimde sorgu → oluşturma → düzenleme → ayrı kayıt akışı iki istemciyle Windows üzerinde kanıtlı; kurulum tekrarlanabilir | Başlanmadı |
+| **5 — Özellikleri genişletme** | Geniş AutoCAD kapsamını modül modül geliştirmek | Gelişmiş 2B, katman/stil, blok/nitelik, açıklama, ileri 3B, layout/PDF, xref/veri ve isteğe bağlı otomasyon | Her modül kendi API/platform/geri okuma ve hata testlerini geçince açılıyor; desteklenmeyenler açık | Başlanmadı; artımlı geliştirme |
+| **6 — Kurulabilir ürün ve dağıtım** | Başkalarının kendi bilgisayarında kurabilmesi | Paketler, imzalama/notarization, istemci ayar rehberi, tanılama, yükseltme/kaldırma ve sürüm belgeleri | Geliştirici araçları olmayan temiz Windows'ta kurulum, kullanım, yükseltme ve kaldırma doğrulanmış; lisans ve yayın kararları kesinleşmiş | Başlanmadı |
+| **M — macOS Apple Silicon** | Windows çekirdeğini Mac'e taşımak | ObjectARX arm64 eklentisi, Unix socket, Mac kabulü/pilot/paketleme | SDK/API farkları, gerçek AutoCAD işlemleri, doğru belge/UNDO/kopya ve Mac kurulum testleri bağımsız kanıtlı | Ayrı faz; kullanıcı ayrıca başlatacak, Windows'u engellemez |
+
+### Faz 2'nin iş sırası ve kabul sınırı
+
+1. **2A / Çekirdek ve test altyapısı:** sürümleri sabitle; proje/derleme yapısını ve MCP stdio sunucusunu kur; sahte eklentiyle mesaj/şema ve hata akışını dene. IPC çağıran doğrulamasının somut mekanizmasını seç; yetki kapısı çözülmeden mutasyon açma. Çıktı: native AutoCAD bağlantısı iddiası taşımayan sınanabilir MCP çekirdeği.
+2. **2B / Windows dikey dilimi:** ObjectARX eklentisini derle; ana thread/context, instance/belge keşfi ve salt okuma; ardından yetkili çizgi/çember/kutu/taşıma ve ölçü geri okuma. Çıktı: Windows AutoCAD 2027 üzerinde ilk gerçek MCP işlemi.
+3. **2C / eski Mac paketi:** Faz M'ye taşındı; güncel Faz 2 kapsamında çalıştırılmaz ve Windows kabulünü bekletmez. Numaralar mevcut referansları korumak için değiştirilmedi.
+4. **2D / Windows kabul kapısı:** mm/metre/birimsiz örnekler, belge/sekme ayrımı, UNDO, orijinal hash/dirty koruması ve ayrı kopyayı yeniden açmayı dene. Kayıt güvenliği kanıtlanamazsa araç kapalı kalır ve bu kapı tamamlandı sayılmaz. Çıktı: [teknik deneme kabul ölçütlerinin](TEKNIK_DENEME_KABUL.md) Windows için doldurulmuş sonuçları; Mac satırları Faz M'ye aittir.
+
+### Faz 3–6'nın iş paketleri
+
+- **3A:** sorgu/projeksiyon/sayfalama ve nesne referansları. **3B:** yetki, revision ve eşzamanlı tekilleştirme. **3C:** transaction/undo, iptal/timeout/unknown ve dosya yarışı testleri. Faz 2'deki temel önlemler burada kapsamlı hata enjeksiyonuyla sağlamlaştırılır.
+- **4A:** 14 aracın giriş/çıktı şemaları ve destek listesi. **4B:** Claude/Codex ile uçtan uca senaryolar. **4C:** Windows pilot kurulumu ve kullanıcı rehberi; Mac pilotu Faz M'de. Bu fazdaki paketler son imzalı genel dağıtım yerine doğrulanmış pilot içindir.
+- **5A:** 2B + katman/stil + blok/nitelik + açıklama. **5B:** ileri katı/yüzey/mesh. **5C:** görünüm/layout/PDF + xref/veri. **5D:** ayrı yetkiyle otomasyon. Her paket bağımsız kapsam ve kabul ölçütüyle ele alınır; ham LISP erişimi "bütün özellikler tamam" sayılmaz.
+- **6A:** kurulum ve istemci yapılandırması. **6B:** Windows imzalama ve temiz cihaz testleri; Mac notarization Faz M'de. **6C:** yükseltme/kaldırma, lisans, destek matrisi ve yayın hazırlığı. Public depo, Release veya paket yayını yalnız kullanıcının açık talebiyle yapılır.
+
+**Bağımlılık:** Windows çekirdek yolu 1 → 2 → 3 → 4'tür. Faz M bu hattın ön koşulu değildir; kullanıcı ayrıca başlattığında ortak çekirdeğin uygun sürümü üzerinden yürür. Faz 4 sonrası çekirdek ürün için Faz 6 yürütülebilir; Faz 5'in bütün ileri modüllerinin bitmesi ilk kurulabilir dağıtımı engellemez. Her yeni Faz 5 modülü aynı Faz 6 dağıtım kontrollerinden geçer.
+
+**Kullanıcı açısından eşikler:** ilk gerçek AutoCAD işlemi Faz 2'de; temel günlük kullanım hedefi Faz 4'te; başkalarının temiz cihazda kurabileceği ürün Faz 6'dadır. Hiçbiri şu an tamamlanmış ürün desteği değildir.
+
+Ayrıntılı dayanaklar: [işlem/API envanteri](OZELLIK_ENVANTERI.md), [iletişim sözleşmesi taslağı](ILETISIM_SOZLESMESI.md), [kabul senaryoları](TEKNIK_DENEME_KABUL.md). Teknik test sonuçları bu mevcut belgelere işlenir; kullanıcının onayladığı tek kısa kayıt FAZ2_DURUM.md dosyasıdır.
 
 ## 13. Açık kararlar
 
 | Açık karar | Neden önemli | Öneri (varsa) |
 |---|---|---|
-| Mac işlemci mimarisi | Derleme, paketleme ve test kapsamı | Kullanıcı belirtecek; universal/arm64/x86_64 değerlendirilecek. |
+| Intel/universal Mac dağıtımı | İlk Apple Silicon hedefinin ötesinde paketleme ve test kapsamı | Apple Silicon/arm64 ilk test hedefidir; Intel/universal desteği ayrıca kararlaştırılacak. |
 | AutoCAD LT desteği | Tam AutoCAD kararı verildi; LT kapsamı belirsiz | İlk kapsam tam AutoCAD 2027; LT ayrı karar. |
 | Lisans | Açık kaynak dağıtım ve katkı koşulları | Apache-2.0 yalnız öneri; karar değil. |
 | Depo görünürlüğü | Public/private ve topluluk katkısı | Şu an private; açık kullanıcı talebi gerekir. |
@@ -283,7 +306,7 @@ Süre tahmini verilmez. Her aşama, önceki aşamanın kanıtı olmadan başlama
 | Keyfi komut/LISP | Güvenlik ve test edilebilirlik | Varsayılan kapalı; ayrı yetki; sandbox değil. |
 | Yetki profilleri | Kim neyi değiştirebilir | Salt okuma/çizim/düzenleme/otomasyon önerisi; ayrıntı açık. |
 | Çoklu instance davranışı | Hedef belirsizliği ve veri güvenliği | Açık seçim; belirsizlikte yazma yok. |
-| Birim/koordinat politikası | Ölçek ve konum hataları | Hedef belgeden okuma; bilinmiyorsa yazma yok. |
+| Birim/koordinat politikası | Ölçek ve konum hataları | Taslak: WCS ve açık birim; fiziksel birimde INSUNITS bilinmiyorsa ret, açık drawing_unit seçimi ayrı. |
 | 3B kapsamı | Ürün vaadi ve API alt kümesi | İlk deneme ilkel nesneler; ileri modelleme ayrı aşama. |
 | Layout/PDF kapsamı | Plot aygıtı ve platform farkları | İleri modül; canlı test gerekir. |
 | Xref okuma/yazma sınırı | Dış dosya ve yol güvenliği | Önce envanter/okuma; yazma ayrı karar. |
@@ -305,4 +328,4 @@ Süre tahmini verilmez. Her aşama, önceki aşamanın kanıtı olmadan başlama
 - [Mevcut çözümler araştırması](arastirma/MEVCUT_COZUMLER_2026-10-18.md) — altı proje ve ek kaynaklar; canlı test yok.
 - [Ajan kuralları](../AGENTS.md) ve [standart](standart/README.md).
 
-Bu plan yeni internet araştırmasıyla değil, mevcut araştırma ve görevde verilen kaynaklarla yazıldı. Kaynakların söylediği ile bu belgedeki tasarım önerileri ayrıdır; öneriler uygulanmadı ve doğrulanmadı.
+İlk plan araştırma kaynaklarına dayanır. Faz 2 güncellemesi yerel kaynak kodu, sabitlenmiş bağımlılıklar, SDK başlıkları ve kabul belgesindeki gerçek komut sonuçlarına dayanır; bu sonuçlar Mac veya tam AutoCAD kapsamına genellenmez.

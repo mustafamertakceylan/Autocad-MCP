@@ -1,53 +1,51 @@
 # Autocad MCP
 
-Windows ve macOS'te **tam AutoCAD 2027** ile MCP istemcileri arasında bağlantı kurmak için planlanan yerel köprü. Yeni 2B/3B çizim ile mevcut çizimi inceleme/düzenleme birlikte hedeflenir. Ürünün ileride kurulabilir açık kaynak olarak dağıtılması amaçlanır.
+Her kullanıcının bilgisayarında çalışan AutoCAD–MCP köprüsü. Hedef tam AutoCAD 2027, Windows ve Mac Apple Silicon; yeni 2B/3B çizim ve mevcut çizimi inceleme/düzenleme. Depo **private**; kurulum paketi veya genel yayın yok.
 
-> **Durum: yalnız planlama.** Bu depoda çalıştırılabilir kod, MCP sunucusu, eklenti, kurulum paketi veya derleme yok. Aşağıdaki mimari ve akış tasarım önerisidir; gerçek AutoCAD ile doğrulanmamıştır. Kurulum/derleme komutu bu aşamada verilmez.
-
-## Kısa tanım
-
-- Hedef: kullanıcının kendi bilgisayarında çalışan yerel köprü; zorunlu merkezi hesap veya sunucu yok.
-- Hedef platformlar: Windows ve macOS üzerinde tam AutoCAD 2027. Mac işlemci mimarisi henüz belirtilmedi.
-- Hedef kapsam: yeni 2B/3B çizim ve mevcut çizimi inceleme/düzenleme.
-- Yerel köprü, bulut AI sağlayıcısının veri akışını otomatik olarak yerelleştirmez; AI istemcisinin buluta veri göndermesi ayrı bir veri akışıdır.
-- Depo şu an **private**. Görünürlük ancak kullanıcı açıkça isterse değişir.
-
-## Yerel akış (öneri)
+**Durum: Faz 2 Windows geliştirici prototipi.** MCP stdio sunucusu ve ObjectARX eklentisi yazıldı. Gerçek AutoCAD 2027 Core Console üzerinde mm/metre için 30+30, birimsiz çizim için 9 kontrol geçti. Mac ayrı **Faz M** kapsamındadır ve Windows fazlarının tamamlanma koşulu değildir. Windows masaüstü UI/çoklu sekme ve kalan Faz 2 kabul kapıları açık; Claude/Codex pilotları Faz 4'tedir.
 
 ```text
-MCP istemcisi
-   │ stdio (ilk hedef)
-   ▼
-Yerel TypeScript MCP sunucusu
-   │ yerel IPC: Windows named pipe / macOS Unix socket (öneri)
-   ▼
-AutoCAD eklentisi (C++/ObjectARX, platforma özel derleme)
-   │
-   ▼
-AutoCAD 2027 ve açık çizim
+MCP istemcisi → yerel Node/TypeScript süreci (stdio)
+             → imzalı yerel Windows named pipe
+             → ObjectARX eklentisi → açık AutoCAD çizimi
 ```
 
-Bu akış uygulanmadı. Windows named pipe, macOS Unix socket, stdio ve Streamable HTTP ayrımları [PLAN.md](docs/PLAN.md) içinde öneri olarak açıklanır.
+Port veya köprüye ait LLM anahtarı gerekmez. İstemci MCP sürecini başlatır; eklentiyle eşleştirme yerel özel dosya üzerinden yapılır. AI istemcisinin buluta gönderdiği veriler ayrı veri akışıdır.
+
+## Başlangıç
+
+Node 24+ ile proje klasöründe:
+
+```powershell
+npm ci --ignore-scripts
+npm run check
+npm test
+```
+
+Bu testler AutoCAD açmaz. Native derleme, izole gerçek test ve eşleştirme adımları: [geliştirme rehberi](docs/GELISTIRME.md).
+
+## Şu anki alt küme
+
+- 14 sabit MCP aracı: keşif, durum/yetenek, belge bilgisi, sorgu/tek nesne, çizgi/çember/kutu, taşıma/silme, işlem durumu ve ayrı DWG kopyası.
+- WCS ve açık birim; instance/belge/epoch, revision, operationId ile tekrar istek kontrolü; geometri geri okuma.
+- Windows sentetik çiziminde tek işlem UNDO, fiziksel birim dönüşümü, hash/dirty koruması ve kopyayı yeniden açıp geometri karşılaştırması geçti.
+- Salt modelspace ve sınırlı nesne türleri; ileri AutoCAD özellikleri henüz uygulanmadı. Native Mac taşıması/eklenti derlemesi kapalı. Genel LISP/komut ve HTTP yok.
 
 ## Belgeler
 
 | Belge | İçerik |
 |---|---|
-| [docs/PLAN.md](docs/PLAN.md) | Ürün akışı, önerilen mimari, modüller, hata durumları, test katmanları, aşamalar ve açık kararlar |
-| [docs/KARARLAR.md](docs/KARARLAR.md) | Sabit kullanıcı kararları, teknik öneriler ve henüz karar olmayanlar |
-| [docs/YETENEK_MATRISI.md](docs/YETENEK_MATRISI.md) | Modül, platform, gerçek test ve aşama bazlı ilk plan tablosu |
-| [docs/arastirma/MEVCUT_COZUMLER_2026-10-18.md](docs/arastirma/MEVCUT_COZUMLER_2026-10-18.md) | Mevcut AutoCAD MCP projeleri ve ürünleri karşılaştırması |
-| [AGENTS.md](AGENTS.md) | Projeye özel ajan kuralları ve güncel kapsam kilidi |
-| [docs/standart/README.md](docs/standart/README.md) | Yerel ajan standardı kopyası |
+| [Geliştirme](docs/GELISTIRME.md) | Gereksinimler, derleme, test, eşleştirme ve mevcut sınırlar |
+| [Kabul kanıtları](docs/TEKNIK_DENEME_KABUL.md) | Gerçek sonuçlar ve çalıştırılmayan kapılar |
+| [Plan](docs/PLAN.md) | Altı faz, bağımlılıklar ve tamamlanma ölçütleri |
+| [Kararlar](docs/KARARLAR.md) | Kullanıcı kararları ve prototip uygulama tercihleri |
+| [Yetenek matrisi](docs/YETENEK_MATRISI.md) | Platform/işlem düzeyinde gerçek destek sınırı |
+| [İletişim sözleşmesi](docs/ILETISIM_SOZLESMESI.md) | 14 araç ve 0.1.0 uygulama profili |
+| [İşlem envanteri](docs/OZELLIK_ENVANTERI.md) | 42 işlem için araştırma/API adayları |
+| [Kaynak notları](docs/arastirma/ASAMA1_KAYNAK_NOTLARI.md) | Resmî belgeler ve SDK düzeltmeleri |
+| [Mevcut çözümler](docs/arastirma/MEVCUT_COZUMLER_2026-10-18.md) | İlk araştırma |
+| [Kısa durum](FAZ2_DURUM.md) | Kullanıcı onaylı tek checkpoint |
+| [Ajan kuralları](AGENTS.md) | Yetki, çalışma ve yayın sınırları |
+| [Üçüncü taraf notları](THIRD_PARTY_NOTICES.md) | Bağımlılıklar ve lisans sınırları |
 
-## Kapsam ve sınırlar
-
-- **Kodlama yok:** Kaynak kodu, bağımlılık kurulumu, paket manifesti, CI, SDK kurulumu, AutoCAD bağlantısı ve derleme mevcut kapsamda değildir.
-- **Canlı test yok:** Hiçbir platformda AutoCAD 2027 ile bağlantı kurulmadı; hiçbir test paketi çalıştırılmadı.
-- **Platform farkları:** Autodesk'in 2027 API tablosuna göre ObjectARX ve AutoLISP Windows/macOS için, .NET ve ActiveX yalnız Windows için belgelidir. ObjectARX SDK'sı tüm API'lerin Mac'te bulunmadığını belirtir; bu nedenle özellik matrisi zorunludur.
-- **Lisans:** Henüz seçilmedi. Apache-2.0 yalnız öneridir; `LICENSE` dosyası bilinçli olarak eklenmedi.
-- **3B ve Mac:** Ürün hedefidir; işlem ayrıntıları ve Mac işlemci mimarisi henüz netleşmedi. Uzak HTTP ayrı kapsam önerisidir. Hiçbiri uygulanmış destek olarak sunulmaz.
-
-## Depo
-
-GitHub: <https://github.com/mustafamertakceylan/Autocad-MCP>. Depo oluşturuldu; görünürlüğü private olarak doğrulandı. Ürün yayını yapılmadı.
+Lisans henüz seçilmedi. Açık kaynak ürün yönü korunuyor; private depoyu public yapmak veya paket yayınlamak için ayrıca kullanıcı talebi gerekir.
