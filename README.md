@@ -2,7 +2,7 @@
 
 Her kullanıcının bilgisayarında çalışan AutoCAD–MCP köprüsü. Hedef tam AutoCAD 2027, Windows ve Mac Apple Silicon; yeni 2B/3B çizim ve mevcut çizimi inceleme/düzenleme. Depo **private**; kurulum paketi veya genel yayın yok.
 
-**Durum: Faz 2 Windows geliştirici prototipi.** MCP stdio sunucusu ve ObjectARX eklentisi yazıldı. Gerçek AutoCAD 2027 Core Console üzerinde mm/metre için 30+30, birimsiz çizim için 9 kontrol geçti. Mac ayrı **Faz M** kapsamındadır ve Windows fazlarının tamamlanma koşulu değildir. Windows masaüstü UI/çoklu sekme ve kalan Faz 2 kabul kapıları açık; Claude/Codex pilotları Faz 4'tedir.
+**Durum: Windows Faz 2 tamamlandı, Faz 3 başladı.** MCP sunucusu ve ObjectARX eklentisi Core Console'da 69, gerçek görünür AutoCAD masaüstünde 26 kontrolü geçti. Faz 3'ün ilk diliminde sınırlı kuyruk, kuyrukta iptal ve yürütme öncesi grant kontrolü eklendi; ortak testler 14/14. Mac ayrı **Faz M** kapsamındadır. Claude/Codex pilotları Faz 4'tedir; ürün/kurulum yayını yok.
 
 ```text
 MCP istemcisi → yerel Node/TypeScript süreci (stdio)

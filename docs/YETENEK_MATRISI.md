@@ -1,6 +1,6 @@
 # Yetenek matrisi (ilk plan)
 
-> Durum: 2026-10-18 ilk plan. Windows prototipinin kanıtlı alt kümesi aşağıdaki tabloda ayrıldı. Mac ve diğer özellikler uygulanmadı; Windows kanıtı Core Console ile sınırlıdır. Tablo ürün vaadi değil; planlama ve kanıt takibi aracıdır.
+> Durum: 2026-10-18 ilk plan. Windows prototipinin kanıtlı alt kümesi aşağıdaki tabloda ayrıldı. Mac ve diğer özellikler uygulanmadı; Windows kanıtı Core Console ve görünür masaüstü temel kabulünü kapsar; bütün ürün özellikleri değildir. Tablo ürün vaadi değil; planlama ve kanıt takibi aracıdır.
 
 İlgili belgeler: [Plan](PLAN.md), [Kararlar](KARARLAR.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md). Aşama sütunu güncel Windows hattıdır; Mac sütunu ayrı Faz M kabulüne aittir ve Windows ilerlemesini engellemez.
 
@@ -22,7 +22,7 @@ Genel API'nin belgeli olması, o modülün ilgili platformda çalıştığı anl
 | Modül | Örnek işlemler | Windows 2027 | Mac 2027 | Gerçek test | Aşama | Not |
 |---|---|---|---|---|---|---|
 | Bağlantı | Instance keşfi, el sıkışma, sürüm/yetenek doğrulama, yeniden bağlanma | Named pipe/stdio; 14 araç, HMAC eşleştirme; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 2 → 4 | Keşif/durum/yetenek; yeniden bağlanma yaşam döngüsü kapsamlı sınanmadı. |
-| Belge | Belge listesi, aktif belge, açma/kaydetme/kapatma, salt okunur ve birim bilgisi | Belge listesi/bilgisi, epoch/revision/INSUNITS, ayrı kopya; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 2 → 3 | Açma/kapatma ve çoklu sekme testi yok. |
+| Belge | Belge listesi, aktif belge, açma/kaydetme/kapatma, salt okunur ve birim bilgisi | Belge listesi/bilgisi, epoch/revision/INSUNITS, ayrı kopya; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 2 → 3 | Test yardımcılarıyla sentetik belge kapat/aç ve çoklu sekme/context geçti; genel belge açma/kapatma MCP aracı yok. |
 | Sorgu | Handle ile nesne, filtreli seçim, özellikler, sınır kutusu, katman/blok/xref envanteri | Modelspace LINE/CIRCLE/3DSOLID, handle/projeksiyon/cursor; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 3 | Sayfalama ve eski cursor reddi geçti; blok/xref envanteri yok. |
 | 2B | Çizgi, daire, yay, polyline, elips, spline oluşturma/okuma/güncelleme | Çizgi ve WCS XY çember oluşturma/okuma; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 2 → 4 | Yay, polyline, elips, spline yok. |
 | Düzenleme | Taşıma, kopyalama, döndürme, ölçekleme, ayna, offset, trim/extend, silme, özellik değiştirme | Taşıma ve silme; ayrı işlem UNDO; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 3 → 4 | Diğer düzenleme komutları yok; kutu yazması yalnız bridge-created nesne. |
@@ -39,7 +39,7 @@ Genel API'nin belgeli olması, o modülün ilgili platformda çalıştığı anl
 - **Windows 2027:** Autodesk 2027 API tablosu ObjectARX, AutoLISP, .NET ve ActiveX'i Windows için listeler. Bu, modül bazında özellik desteği kanıtı değildir.
 - **macOS 2027:** Aynı tablo ObjectARX ve AutoLISP'i macOS için listeler; .NET ve ActiveX'i listelemez. ObjectARX SDK sayfası tüm API'lerin Mac'te bulunmadığını açıkça belirtir. Modül bazında alt küme doğrulanmalıdır.
 - **Mimari:** Kullanıcı Mac'in Apple Silicon (M serisi) olduğunu belirtti; ilk Mac test hedefi arm64. Intel/universal paketler ayrıca kararlaştırılacak.
-- **Canlı test:** Windows AutoCAD 2027 Core Console X.60.0.0, stok şablon kopyaları, 2026-10-18. Mm/metre için 30+30, birimsiz için 9 kontrol geçti; kanıt ve açık kapılar [kabul belgesinde](TEKNIK_DENEME_KABUL.md). Mac ve masaüstü UI çalıştırılmadı.
+- **Canlı test:** Windows AutoCAD 2027 Core Console X.60.0.0, stok şablon kopyaları, 2026-10-18. Mm/metre için 30+30, birimsiz için 9 kontrol geçti; kanıt ve açık kapılar [kabul belgesinde](TEKNIK_DENEME_KABUL.md). Ek olarak görünür Windows masaüstünde 26 kontrol geçti; Mac çalıştırılmadı.
 
 ## Güncelleme kuralı
 

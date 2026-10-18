@@ -55,6 +55,24 @@ npm run test:live:windows -- 'C:\Program Files\Autodesk\AutoCAD 2027' "$env:LOCA
 
 `results.json` gerçek kontrol sonuçlarını ve ölçüleri, `autocad.log` native günlüğü içerir. Günlükte eşleştirme dosyasının yalnız yolu bulunur. Eşleştirme sırrı yazılmaz. DWG ve günlükler Git'e girmez.
 
+## 3B. Görünür Windows masaüstü kabulü
+
+Test denetimleri normal derlemeye girmez. Masaüstü harness ayrıca PowerShell 7 (`pwsh.exe`) kullanır. Ayrı klasöre açıkça derleyin:
+
+```powershell
+cmake -S . -B build/desktop-tests -G "Visual Studio 18 2026" -A x64 -DOBJECTARX_ROOT="C:/Dev/Other Projects/Autocad MCP/tmp/sdk/CDROM1" -DAUTOCAD_MCP_TESTING=ON
+cmake --build build/desktop-tests --config Release
+npm run build
+$env:AUTOCAD_MCP_DESKTOP_TEST='1'
+node dist/test/desktop-windows.js --new
+```
+
+`start-desktop.ps1` bu test bilgisayarındaki AutoCAD 2027 profil düzenini kullanır. Mevcut acad süreci varsa testi başlatmaz. Yeni isimli test profilini kaynak profilden kopyalar; yalnız yeni profilde kendi modül klasörünü trusted path yapar, SECURELOAD=2 kalır. Kullanıcının mevcut profili değiştirilmez. Profil ve kanıtlar yerelde tutulur; genel kurulum/kaldırma betiği değildir.
+
+Yeni UUID dizininde primary/secondary stok şablon kopyaları açılır. Gövdeyi modelden almayan sabit test aksiyonları yalnız test derlemesi+ortamında etkinleşir. Normal `build/native` için `AUTOCAD_MCP_TESTING=OFF` kullanın; test derlemesini dağıtmayın.
+
+Harness sonuçları `tmp/desktop-runs/<UUID>/desktop-results.json` içindedir. Varsayılan olarak sentetik AutoCAD penceresini açık bırakır; test sonunda kendi oturumunu kapatmak için `AUTOCAD_MCP_DESKTOP_CLOSE=1` verilebilir. Oluşan `tmp/desktop-current.json`, yalnız o test oturumuna tekrar bağlanma bilgisidir; pairing sırrını içermez. Mevcut konfigürasyonla tekrar test ancak boş/fresh başlangıç koşulları sağlanıyorsa çalıştırılır.
+
 ## 4. Eklenti–MCP yaşam döngüsü
 
 Geliştirici akışı: AutoCAD sürecinin ortamında `MCP_RUNTIME_DIR` mutlak bir yerel dizine ayarlanır; eklenti yüklenir ve AutoCAD'de `MCPSTART` çalıştırılır. Eklenti özel DACL'li yeni oturum dizini ve `pairing.json` üretir. Modelin bu dosyayı okuması gerekmez; yerel MCP sürecine yolu verilir:
@@ -68,13 +86,13 @@ Bu, istemciye verilecek süreç/argüman bilgisidir; belirli bir istemcinin ayar
 
 `MCPSTOP` pipe'ı kapatır, sırrı bellekten siler ve kendi eşleştirme dosyasını kaldırır. AutoCAD yeniden başladığında yeni instance/epoch ve eşleştirme gerekir. Oturum süresi 24 saattir. Sırlar için paylaşım/git yok; eşleştirme dosyası modeli talimatla sınırlandıran bir sandbox değildir.
 
-`MCPPUMP` ve `bridge.test_done` yalnız `MCP_TEST_MODE` ile test kontrolü içindir; 14 MCP aracına eklenmez. Core Console'da Win32 mesajlarını ana thread'de işler. Masaüstü AutoCAD'in event loop/context geçişi ayrıca sınanmalıdır; bu belge kullanıcı çizimlerinde kullanım önerisi değildir.
+`MCPPUMP` ve `bridge.test_done` yalnız `MCP_TEST_MODE` ile test kontrolü içindir; 14 MCP aracına eklenmez. Core Console'da Win32 mesajlarını ana thread'de işler. Görünür masaüstü event loop/context geçişi 26 sentetik kontrolde test pompası olmadan geçti; bu belge kullanıcı çizimlerinde üretim kullanım önerisi değildir.
 
 ## 5. Mevcut sınırlar
 
 - Modelspace; çizgi, WCS XY çember, eksenlere paralel kutu. Taşıma/silme çizgi, çember ve bu oturumda üretilen kutularla sınırlı.
 - Birimler `mm`, `m`, `inch`, `drawing_unit`; fiziksel dönüşüm INSUNITS 1/4/6 için. Bilinmeyen birimde fiziksel yazma reddedilir; açık drawing_unit kabul edilir. Inch canlı testi çalıştırılmadı.
-- Tek eşleştirilmiş instance ve MCP süreci başına bir IPC çağrısı. Çoklu istemci paylaşımı ürün kabulü değildir.
+- Tek eşleştirilmiş instance ve MCP süreci başına bir IPC çağrısı. Faz 3: toplam 64 admission sınırı; kuyrukta iptal gönderilmeden kaldırılır, gönderilmiş mutasyonun etkisi unknown kalabilir. Grant yürütmeden önce yeniden doğrulanır. Çoklu istemci paylaşımı ürün kabulü değildir.
 - HMAC sırrı + işlem izin listesi; kullanıcı arayüzünden profil verme/iptal yönetimi yok. Windows dosya ACL'si eklenti tarafından oluşturulur; Node ayrıca Windows ACL denetimi yapmaz.
 - Mutasyon başına en fazla 100 hedef; sorgu limit 1000, tarama 10000, çerçeve 1 MiB, iç gövde 512 KiB. Büyük çizim performansı sınanmadı.
 - Ayrı kayıt yalnız oturumun `output` dizinine, `outputRootId=test-output`, düz yeni `.dwg` adı, `overwrite:false`. Alt dizin ve genel kullanıcı kökü seçimi yok.

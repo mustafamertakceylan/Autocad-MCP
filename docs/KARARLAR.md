@@ -89,9 +89,9 @@ Bu maddeler yönetici tarafından belirlenen tasarım yönleridir. Faz 1 tasarı
 - Kullanıcının seçtiği eşleştirme dosyası + kullanıcıya özel DACL + 256 bit sır ile nonce/HMAC-SHA256. 24 saatlik oturum; MCPSTOP dosyayı kaldırır. Dosyaya erişebilen aynı kullanıcı süreci yetkiyi kullanabilir; süreç bazlı işletim sistemi sandbox'ı iddiası yoktur.
 - Her çağrı açık instance/belge/epoch hedefler. Yazma revision ve operationId ister. İşlem kayıtları bellekte, en fazla 10000; yeniden başlatma sonrası kalıcılık yok. Kör tekrar yok.
 - Ayrı DWG: yalnız oturumun private output kökü (`test-output`), düz yeni dosya adı, üzerine yazma yok. Side-database snapshot, yeniden açma/geometri karşılaştırması ve no-replace yayın kullanılır.
-- Ana thread'e Win32 mesaj sevki; application context ve belge kilidi. Core Console test pompası aynı mesaj yolunu kullanır; masaüstü async context ve sekme geçişi ayrıca sınanacak.
+- Ana thread'e Win32 mesaj sevki; application context ve belge kilidi. Core Console test pompası aynı mesaj yolunu kullanır. Görünür masaüstünde test pompası olmadan belge/context, meşgul LINE, UNDO ve dosya yarışları ayrıca geçti.
 - `bridge.cancel` ve kalıcı işlem günlüğü uygulanmadı. MCP iptali yerel beklemeyi keser; gönderilmiş mutasyonun sonucu unknown olabilir.
-- [Kabul belgesi](TEKNIK_DENEME_KABUL.md) gerçek sonuçları ve çalıştırılmayan kapıları ayırır. Mac ayrı Faz M'ye taşındı; Faz 2 yalnız açık Windows kabul kapıları nedeniyle devam ediyor.
+- [Kabul belgesi](TEKNIK_DENEME_KABUL.md) gerçek sonuçları ve çalıştırılmayan kapıları ayırır. Mac ayrı Faz M'ye taşındı; Windows Faz 2'nin 26 masaüstü kontrolü geçti; Faz 3 güvenilirlik çalışmaları başladı.
 - Commit/push/yayın için bu işte izin yoktur. Önceki belge işindeki ajan kayıtları tarihsel kayıttır; Faz 2 yöneticinin kendisi tarafından yazıldı.
 
 ## 5. Kaynaklar
