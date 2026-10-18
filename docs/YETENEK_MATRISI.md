@@ -1,6 +1,6 @@
 # Yetenek matrisi (ilk plan)
 
-> Durum: 2026-10-18 ilk plan. Windows prototipinin kanıtlı alt kümesi aşağıdaki tabloda ayrıldı. Mac ve diğer özellikler uygulanmadı; Windows kanıtı Core Console ve görünür masaüstü Faz 2–3 kabulünü (Faz 3: 56 kontrol) kapsar; bütün ürün özellikleri değildir. Tablo ürün vaadi değil; planlama ve kanıt takibi aracıdır.
+> Durum: 2026-10-18 ilk plan. Windows prototipinin kanıtlı alt kümesi aşağıdaki tabloda ayrıldı. Mac ve diğer özellikler uygulanmadı; Windows kanıtı Core Console ve görünür masaüstü Faz 2–4 kabulünü (Faz 3: 56 kontrol; Faz 4: Codex/OpenCode model pilotu) kapsar; bütün ürün özellikleri değildir. Tablo ürün vaadi değil; planlama ve kanıt takibi aracıdır.
 
 İlgili belgeler: [Plan](PLAN.md), [Kararlar](KARARLAR.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md). Aşama sütunu güncel Windows hattıdır; Mac sütunu ayrı Faz M kabulüne aittir ve Windows ilerlemesini engellemez.
 
@@ -26,13 +26,17 @@ Genel API'nin belgeli olması, o modülün ilgili platformda çalıştığı anl
 | Sorgu | Handle ile nesne, filtreli seçim, özellikler, sınır kutusu, katman/blok/xref envanteri | Modelspace LINE/CIRCLE/3DSOLID, handle/projeksiyon/cursor; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 3 | Sayfalama ve eski cursor reddi geçti; blok/xref envanteri yok. |
 | 2B | Çizgi, daire, yay, polyline, elips, spline oluşturma/okuma/güncelleme | Çizgi ve WCS XY çember oluşturma/okuma; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 2 → 4 | Yay, polyline, elips, spline yok. |
 | Düzenleme | Taşıma, kopyalama, döndürme, ölçekleme, ayna, offset, trim/extend, silme, özellik değiştirme | Taşıma ve silme; ayrı işlem UNDO; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 3 → 4 | Diğer düzenleme komutları yok; kutu yazması yalnız bridge-created nesne. |
-| Katman-stil | Katman oluşturma/yeniden adlandırma, renk, çizgi tipi, kalınlık, açma/kapama, kilit; yazı/ölçü stilleri | Uygulanmadı; modül API'si doğrulanmadı `[W]` | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Çalıştırılmadı `[T]` | 4 | Stil bağımlılıkları ve ölçek davranışı doğrulanmalı. |
-| Blok | Blok tanımı, ekleme, nitelikler, iç içe bloklar | Uygulanmadı; modül API'si doğrulanmadı `[W]` | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Çalıştırılmadı `[T]` | 4 → 5 | Dinamik bloklar ayrı kapsam önerisi. |
-| Açıklama | Metin/mtext, ölçülendirme, leader/multileader, tablo (ileri) | Uygulanmadı; modül API'si doğrulanmadı `[W]` | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Çalıştırılmadı `[T]` | 4 | Ölçü stili ve ölçek platform farkı gösterebilir. |
+| Katman-stil | Katman oluşturma/yeniden adlandırma, renk, çizgi tipi, kalınlık, açma/kapama, kilit; yazı/ölçü stilleri | Uygulanmadı; modül API'si doğrulanmadı `[W]` | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Çalıştırılmadı `[T]` | 5 | Stil bağımlılıkları ve ölçek davranışı doğrulanmalı. |
+| Blok | Blok tanımı, ekleme, nitelikler, iç içe bloklar | Uygulanmadı; modül API'si doğrulanmadı `[W]` | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Çalıştırılmadı `[T]` | 5 | Dinamik bloklar ayrı kapsam önerisi. |
+| Açıklama | Metin/mtext, ölçülendirme, leader/multileader, tablo (ileri) | Uygulanmadı; modül API'si doğrulanmadı `[W]` | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Çalıştırılmadı `[T]` | 5 | Ölçü stili ve ölçek platform farkı gösterebilir. |
 | 3B | Katı ilkel nesneler, extrude/revolve, boolean, 3B polyline; yüzey/mesh ileri | Eksenlere paralel kutu; hacim/merkez/extents okuma; prototip | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Windows Core Console, mm/m/birimsiz; kabul kanıtı | 2 (deneme) → 5 (ileri) | Extrude/revolve/boolean/yüzey/mesh yok. |
 | Görünüm-layout-PDF | Zoom/görünüm, viewport, layout, page setup, plot/PDF, görsel stil | Uygulanmadı; modül API'si doğrulanmadı `[W]` | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Çalıştırılmadı `[T]` | 5 | Plot/PDF aygıt ve kâğıt ayarları platforma göre değişebilir. |
 | Xref-veri | Xref ekleme/çıkarma/yenileme, veri çıkarımı, alanlar, dış tablolar | Uygulanmadı; modül API'si doğrulanmadı `[W]` | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Çalıştırılmadı `[T]` | 5 | Yol çözümleme ve eksik xref davranışı test edilmeli. |
 | Otomasyon | Toplu işlem, komut dizisi, LISP değerlendirme (öneri) | Uygulanmadı; modül API'si doğrulanmadı `[W]` | Uygulanmadı; modül API'si doğrulanmadı `[M]` | Çalıştırılmadı `[T]` | 5 | Yüksek risk; varsayılan kapalı önerisi; LISP sandbox değil. |
+
+## İstemci pilotu — Faz 4
+
+Windows AutoCAD 2027 normal modülüyle Codex CLI 0.160.0 ve OpenCode 1.18.34 / EVREN MiMo V2.6 Pro gerçek model akışı geçti. 20 LINE + 1 CIRCLE profil (80×40 mm, Ø10), sorgu, taşıma/geri taşıma, geçici nesne oluştur/sil ve iki ayrı DWG kaydı/reopen doğrulandı. Pilot configure/doctor/pair ve Codex/Claude/OpenCode skill dosyaları hazır. Claude canlı modeli limit yokluğu nedeniyle **çalıştırılmadı**; statik config/skill kontrolü uygulandı. Başka istemciler için genel uyumluluk veya temiz cihaz iddiası yok. Kanıt: [W-phase4 kabulü](TEKNIK_DENEME_KABUL.md); kurulum: [pilot rehberi](PILOT_KURULUM.md).
 
 ## Platform API notları
 

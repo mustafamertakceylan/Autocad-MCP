@@ -1,6 +1,6 @@
 # Teknik deneme kabul belgesi
 
-> Durum: 2026-10-18 **Windows Faz 2 ve Faz 3 kabulü tamamlandı**. Mm/metre için UNDO dahil 30+30, birimsiz çizim için 9 kontrol geçti. Görünür Windows masaüstünde 26 kontrol geçti. Faz 3'te aşağıdaki sınırlı alt küme için 56/56 masaüstü hata enjeksiyonu kontrolü geçti; sınırsız stres/üretim kabulü değildir. Mac ayrı Faz M kapsamındadır ve Windows kabulünü engellemez. Sözleşme: [ILETISIM_SOZLESMESI.md](ILETISIM_SOZLESMESI.md). Plan: [PLAN.md](PLAN.md) §12. Matris: [YETENEK_MATRISI.md](YETENEK_MATRISI.md).
+> Durum: 2026-10-18 **Windows Faz 2–4 sınırlı pilot kabulü tamamlandı**. Mm/metre için UNDO dahil 30+30, birimsiz çizim için 9 kontrol geçti. Görünür Windows masaüstünde 26 kontrol geçti. Faz 3'te aşağıdaki sınırlı alt küme için 56/56 masaüstü hata enjeksiyonu kontrolü geçti; sınırsız stres/üretim kabulü değildir. Mac ayrı Faz M kapsamındadır ve Windows kabulünü engellemez. Sözleşme: [ILETISIM_SOZLESMESI.md](ILETISIM_SOZLESMESI.md). Plan: [PLAN.md](PLAN.md) §12. Matris: [YETENEK_MATRISI.md](YETENEK_MATRISI.md).
 >
 > Kullanıcı bu işte Windows/ortak kod ve izole AutoCAD testini onayladı; Mac'i ayrı Faz M olarak ayırdı. Bu belge gelecekteki Mac/ürün yayını için onay değildir.
 
@@ -18,7 +18,7 @@ Her satır, gerçek çalıştırmada tarih/platform/AutoCAD sürümü/test çizi
 
 ### Gerçek komut sonuçları ve yerel kanıt
 
-- `npm test`: **17/17** güncel ortak test (Faz 2 tabanı 11, Faz 3 kuyruk/kontrol/uyumluluk testleri +6; protokol/şema, mock IPC, gerçek MCP stdio ve iptal; AutoCAD başarısı değildir).
+- `npm test`: **21/21** güncel ortak test (Faz 2 tabanı 11, Faz 3 +6, Faz 4 +4: üç pilot/resource/eşleştirme ve bir bağımsız geometri testi). Protokol/şema, mock IPC, gerçek MCP stdio ve iptal; AutoCAD başarısı değildir. Son koşu normal kullanıcı izinleriyle geçti; Codex sandbox'ı mevcut pointer dosyasının atomik rename işlemini EPERM ile engellediği için o koşu yükseltilmiş komutla yapıldı, ACL değiştirilmedi.
 - `cmake --build build/native --config Release`: ObjectARX 2027 eklentisi derlendi. MSVC 14.51 kullanıldı; SDK önerisi 14.44 ile ayrıca çalıştırılmadı.
 - `ctest --test-dir build/native -C Release --output-on-failure`: **1/1** C++ test executable: protokol/HMAC ve gerçek Jobs kayıt/kapasite/16-thread dedup/kuyruk iptali/timeout/bütçe kontrolleri; HMAC golden vector TypeScript ile aynı.
 - Gerçek zincir: resmî MCP SDK client → ayrı Node stdio süreci → imzalı named pipe → ObjectARX → AutoCAD Core Console. Mock değil (`backend=objectarx`, `simulation=false`).
@@ -49,7 +49,7 @@ Kanıt: `tmp/desktop-runs/236c7661-7d52-4113-b0af-b59fac43fea6/desktop-results.j
 
 Test kontrolleri yalnız `-DAUTOCAD_MCP_TESTING=ON` derlemesi + `MCP_TEST_MODE=1` ortamında vardır; normal derlemede `bridge.test_action` bulunmaz. Sabit sentetik adlar kullanılır, keyfi komut/yol MCP aracı açılmaz. Kullanıcı profili yerine yeni adlandırılmış test profili kullanılır; SECURELOAD=2 açık kalır.
 
-**Faz sınırı:** Windows Faz 2 temel köprüsü ve Faz 3 güvenilir çekirdeği kapandı. Destek kapsamı hâlâ 14 araç/modelspace/WCS/LINE-CIRCLE-bridge kutusudur. Genel AutoCAD özellikleri, çoklu otomatik instance keşfi, bütün metadata, büyük çizim stresi, istemci pilotu ve dağıtım bu kabulün dışındadır. Mac ayrı Faz M.
+**Faz sınırı:** Windows Faz 2 temel köprüsü ve Faz 3 güvenilir çekirdeği kapandı. Destek kapsamı hâlâ 14 araç/modelspace/WCS/LINE-CIRCLE-bridge kutusudur. Genel AutoCAD özellikleri, çoklu otomatik instance keşfi, bütün metadata, büyük çizim stresi ve dağıtım Faz 2–3 kabulünün dışındadır; istemci pilotu aşağıdaki W-phase4 bölümündedir. Mac ayrı Faz M.
 
 ### W-phase3 — güvenilir çekirdek (56/56)
 
@@ -65,6 +65,44 @@ Kanıt: `tmp/desktop-runs/b948ceb0-63f9-48e7-a0aa-cfdc76a6e7f3/phase3-results.js
 **Enjeksiyon sınırı:** `abort_unconfirmed` gerçek abort çağrısından sonra kanıt eksikliğini taklit eder; gerçek SDK abort başarısızlığı ölçülmedi. `source_side_effect` test derlemesinde snapshot için write lock alıp sentetik INSUNITS'ı gerçekten değiştirir; normal save_copy read lock kullanır. Bu fixture gerçek partial bildirimini ve çıktı yayımlanmamasını ölçer; test-only restore ile birim geri alınır. Native fault/probe/seal kontrolleri normal build'de etkin değildir.
 
 **Normal eklenti regresyonu:** `AUTOCAD_MCP_TESTING=OFF`; `tmp/live-runs/9b38e0f9-80c4-4cc2-9e12-28b48cf74ad0/results.json` **30/30**. Resmî SDK stdio → gerçek ObjectARX zinciri, mm geometri/UNDO, dedup, ayrı kayıt/reopen ve source hash/dirty yeniden geçti. Önceki metre/birimsiz kanıtları yukarıdadır; son kodla bu iki birim yeniden çalıştırılmadı.
+
+### W-phase4 — gerçek model istemcileri ve fotoğraftan sayısal çizim
+
+2026-10-18, AutoCAD 2027 R26.0.60.0.0 / Windows x64, normal `build/native` modülü (`AUTOCAD_MCP_TESTING=OFF`). Yeni test profili, stok acadiso.dwt kopyası, INSUNITS=4. Geometri görünür masaüstü event loop'unda, MCP üzerinden üretildi; canlı yazmada test_action/test pompası veya başka CAD API'si kullanılmadı. Yalnız sunum için UI üzerinden Zoom Extents ve uzaklaşma yapıldı; çizim penceresi açık bırakıldı.
+
+Yerel kanıt kökü: `tmp/desktop-runs/d9ec835d-81cc-40a9-ad31-b9d5110fd502/`. `pilot-results.json` native sonuçları, `verification-both.json` bağımsız ölçüm/reopen kabulünü içerir. Model günlükleri kanıttır; modelin kendi başarı metni kabul yerine geçmez. Kaynak fotoğraf sağlayıcılara gönderilmedi; kullanıcıca onaylanan sayısal ölçüler gönderildi.
+
+| İstemci | Gerçek akış | Sonuç / kanıt |
+|---|---|---|
+| OpenCode 1.18.34, EVREN MiMo V2.6 Pro, max | Yerel skill okuma → boş çizimi sorgu → 20 LINE + 1 CIRCLE → tümünü +5X taşı/geri taşı → sorgu → ayrı DWG | `opencode-draw.jsonl`, `opencode-draw-summary.json`; 58 araç çağrısı, 24 native mutasyonun tamamı succeeded/applied=true/verified=true; model exit 0 |
+| Codex CLI 0.160.0, gpt-6.1-sol, high | MCP resource skill okuma → mevcut 21 nesneyi incele → geçici R2 çember oluştur → +10X taşı → geri oku → yalnız geçici çemberi sil → sorgu → ikinci DWG | `codex-edit.jsonl`, `codex-edit-summary.json`; 4 native mutasyon succeeded/applied=true/verified=true; model exit 0. Aşağıdaki iki ret ayrıca kaydedildi |
+| Claude Code | `.mcp.json`, `.claude/skills` üretimi ve aynı canonical skill doğrulaması | **Canlı çağrı çalıştırılmadı:** kullanıcı limiti yok. Claude Desktop testi de yapılmadı |
+
+Codex'in ilk çember isteğinde koordinatlar string gönderildi; SDK girdi şeması isteği native katmana gitmeden reddetti. Ardından hiç gönderilmemiş ID için işlem durumu unknown/null döndü. Model revision/geometri sorgulayıp girdi tipini düzelterek aynı ID ile tek gerçek çember oluşturdu. Bu iki çağrı hata olarak saklandı; kusursuz ilk deneme iddiası yoktur. Bilinmeyen bir native mutasyon körlemesine tekrarlanmadı. Önceki Codex probe'da shell üzerinden skill okuması politika tarafından reddedilmişti; shell izni gevşetilmedi, iki sabit MCP resource ile okuma geçti.
+
+Bağımsız doğrulayıcı `test/verify-client-drawing.ts`, istemci fixture'ındaki vertex listesini beklenen geometri olarak kullanmaz; onaylı ölçülerden konturu ayrı türetir. Her kenarı, merkez/radius, tam nesne sayısı ve tarama sayısını karşılaştırır; tolerans 1e-6 mm.
+
+| Ölçü | Gerçek geri okuma |
+|---|---|
+| Modelspace | 20 LINE + 1 CIRCLE; cursor null, scanned=21 |
+| Dış ölçü | 80×40 mm; min [-40,-20,0], max [40,20,0] |
+| Yan boşluk | İç kenarlar x=±25 (aralık 50); açıklık 20, derinlik 15 mm |
+| Orta çentik | Genişlik 20; iç kenarlar y=±15 (aralık 30); derinlik 5 mm |
+| Merkez çember | [0,0,0], R5 / Ø10 mm |
+| Dış kontur çevresi | 320 mm |
+| Hesaplanan alan | Kontur 2400 mm²; çember çıkarılınca 2321.460183660255 mm². Bu hesap 2B sınır üzerinden yapılır; DWG'de bölge/katı oluşturulmadı |
+
+İki kopya ayrı Core Console süreçlerinde yeniden açıldı; salt okuma MCP sorgularıyla aynı 21 nesne ve ölçüler doğrulandı. Kanıt dizinleri `tmp/reopen-runs/d3e4b02c-5026-4673-b639-dbb8263dc6d8` (OpenCode) ve `38e94904-75c6-4a65-be61-3476ae083331` (Codex). Kaynak template kopyasının SHA256 değeri korundu; reopen için kullanılan scratch DWG de çıkış sonrası byte düzeyinde değişmedi. İlk reopen betiğinde QUIT sorusuna `_N` verilmesi scratch kopyanın kaydına yol açtı; gerçek prompt "discard all changes" olduğundan `_Y` ile düzeltildi ve iki son kabul geçti. Asıl model çıktısı değiştirilmedi.
+
+Kullanıcı çıktıları Git dışında `runtime/exports/d9ec835d-81cc-40a9-ad31-b9d5110fd502/`: `teknik-resim-opencode.dwg`, `teknik-resim-codex.dwg`, gerçek entity geri okumasından `observed-geometry.json`, `teknik-resim.svg` ve `teknik-resim.png`. PNG bir AutoCAD ekran görüntüsü değildir; ölçülen geometri önizlemesidir. Kaynak fotoğraf düzenlenmedi.
+
+Pilot setup unit/stdio testleri: secret kopyalanmaması, üç istemcinin aynı bağlantıya yönelmesi, dolu klasörün korunması, yanlış instance pointer reddi, 14 araç + 2 sabit resource, keyfi resource yolu reddi, explicit re-pair/config koruması geçti. Skill Creator `quick_validate.py`: **Skill is valid!**. `npm run check` ve CTest **1/1** geçti. [Kullanıcı rehberi](PILOT_KURULUM.md) ve [şema kataloğu](TOOL_CATALOG.json) eklendi. Katı input şemaları yanında outputSchema halen genel object'tir; dar statik çıktı doğrulaması kapsam dışı sınır olarak belgelenir.
+
+**Ek bağımsız Codex kabulü:** Kullanıcının açık isteğiyle ayrı Codex görevi, önceki fotoğraf/fixture/vertex/DWG'yi kullanmadan yalnız sayısal ölçülerden konturu türetti. Resmî SDK Client + StdioClientTransport üzerinden MCP create_line/create_circle/save_copy ile yeni stok kaynakta 21 nesne ve ayrı DWG oluşturdu. `tmp/independent-codex-29497083-1944-48f2-816c-5a4416d33bf9/evidence.json`: **52 kontrol**, 22 doğrulanmış mutasyon (20 çizgi, bir çember, bir kayıt), iki ayrı Core Console oturumu, bütün kenar/çentik ölçüleri, kaynak/çıktı SHA256 ve normal kapanış geçti. İlk denemelerde sandbox registry izni ve sürücünün eksik projection alanı sorunu vardı; son başarılı deneme yeni boş kaynakla yapıldı, eksik deneme kanıtı korundu. Kaynak/config/plan koduna değişiklik yapılmadı; bu geçici sürücü ve çıktılar Git dışında kalır.
+
+Yönetici yalnız rapora dayanmadı: çıktı DWG'sinin kopyasını üçüncü, yeni Core Console sürecinde **salt okuma MCP sorgularıyla yeniden açtı**. Önceki bağımsız geometri doğrulayıcısı tüm 20 kenarı, Ø10 merkezi, 80×40 sınırı ve 320 mm çevreyi doğruladı; modül/kaynak/çıktı hash'leri korundu. Kanıt: `tmp/independent-review-5d66cf45-8557-4f75-9b71-016bf691a7f1/review.json`. DWG: `runtime/exports/independent-codex-29497083-1944-48f2-816c-5a4416d33bf9/teknik-resim-codex-bagimsiz.dwg`. Kullanıcının son isteğine göre ölçü yazıları eklenmedi. Bağımsız test Core Console'dadır; bu çizim için görünür masaüstü testi çalıştırılmadı.
+
+**Faz 4 kapanışı:** Kullanıcının seçtiği Codex + OpenCode alternatifiyle Windows geliştirici pilotu tamamlandı. 14 aracın önceki native temel kabulü korunur; bu model deneyi 3B kutu dahil her aracı yeniden kullanmış sayılmaz. Claude canlı kabulü ertelendi. Native ölçü/yazı, birleşik polyline, 3B delik, temiz cihaz/paketleme, Mac ve bütün AutoCAD özellikleri bu kapanışa dahil değildir. Kullanıcı tamamlanmış Faz 4 değişikliklerinin commit ve private main'e push'unu onayladı; bu yetki Faz 5 kodlamasını içermez.
 
 ## 2. Test çizimleri
 

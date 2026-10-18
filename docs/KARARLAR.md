@@ -30,6 +30,8 @@
 | K-16 | Önceki araştırma | `C:\Dev\Other Projects\AutoCAD-MCP` araştırma klasörü korunur; bu projenin kökü değildir. |
 | K-17 | Raporlama | Her özellik; hedef, platform/API ve gerçek test durumuyla raporlanır. Serbest komut/LISP erişimi tam test kapsamı sayılmaz. |
 | K-18 | Bu belge işindeki ajanlar | Kullanıcı EVREN MiMo ve EVREN DeepSeek kullanılmasını istedi. Önce MiMo denenir; çalışmazsa ayrı DeepSeek Pro ajanına geçilebilir. Paylaşılan kapsam teknik plan/kural/görev belgeleridir; sır veya kişisel çizim yok. |
+| K-19 | Faz 4 | Kullanıcı Windows MVP, Codex/Claude skill ve OpenCode MCP bağlantısı/canlı testi istedi. Claude limiti yok; canlı Claude çağrısı yapılmaz. Model kabulü Codex + OpenCode/EVREN MiMo ile yapıldı; uygulamayı yönetici kendisi geliştirdi. Sonradan açıkça istediği bağımsız Codex çizimi de denetlendi. Kullanıcı bu tamamlanmış Faz 4 grubu için commit/push onayı verdi; izin Faz 5 geliştirmesine veya ürün yayınına aktarılmaz. |
+| K-20 | Teknik resim deneyi | Kullanıcı fotoğrafındaki parça 80×40 mm, simetrik ve merkez Ø10 mm olarak doğrulandı. Kaynak fotoğraf sağlayıcıya gönderilmez; yalnız sayısal ölçülerle sentetik LINE/CIRCLE çizimi kullanılır. Native ölçü/yazı ve 3B delik bu deneyin çıktısı değildir. |
 
 ## 2. Teknik öneriler (karar değil)
 

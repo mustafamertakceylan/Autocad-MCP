@@ -213,6 +213,8 @@ Ayrı `op-unresolved-1` için status sorgusu ardından dönebilecek belirsiz son
 
 ## 11. Kaynak ve açık kapılar
 
+Faz 4 gerçek MCP metadata çıktısı: [TOOL_CATALOG.json](TOOL_CATALOG.json), `npm run catalog` ile yeniden üretilir. 14 araç değişmedi; iki sabit ve eşleştirme bilgisi içermeyen [skill resource](PILOT_KURULUM.md) eklendi. Girdi şemaları katı; MCP outputSchema halen genel JSON object'tir. Aşağıdaki örnekler her çıktı alanı için dar statik tip doğrulaması sayılmaz. Windows temel uygulama kapıları Faz 2–3 kabulüyle kapandı; Mac ve ileri özellikler açık kalır.
+
 - [MCP 2026-07-28 araçlar](https://modelcontextprotocol.io/specification/2026-07-28/server/tools): şema, dış araç zarfı, liste ve structuredContent davranışı.
 - [MCP sürüm değişiklikleri](https://modelcontextprotocol.io/specification/2026-07-28/changelog): dış sürüm uyumluluğu iç bridge sürümünden ayrıdır.
 - [Belge kilidi](https://help.autodesk.com/cloudhelp/2027/ENU/OARX-RefGuide/files/OARX-RefGuide-AcApDocManager__lockDocument_AcApDocument__AcAp__DocLockMode_ACHAR__ACHAR__bool.html): kaynak kilidi; ana thread dispatcher kanıtı değildir.

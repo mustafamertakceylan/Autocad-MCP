@@ -1,6 +1,6 @@
 # Geliştirme ve prototipi çalıştırma
 
-Bu sürüm geliştirici prototipidir. Kurulum paketi, imzalı genel dağıtım ve Claude/Codex pilot kabulü henüz yoktur. Gerçek test kapsamı [kabul belgesindedir](TEKNIK_DENEME_KABUL.md). Mac native taşıması/eklenti derlemesi ayrı Faz M kapsamındadır ve şu an kapalıdır; Windows kabulünü engellemez.
+Bu sürüm geliştirici pilotudur. Windows Codex ve OpenCode pilot kabulü geçti; Claude dosyaları/skill hazır, canlı Claude çağrısı çalıştırılmadı. Kurulum paketi ve imzalı genel dağıtım yoktur. İstemci kurulumu [pilot rehberinde](PILOT_KURULUM.md), gerçek sonuçlar [kabul belgesindedir](TEKNIK_DENEME_KABUL.md). Mac native taşıması/eklenti derlemesi ayrı Faz M kapsamındadır ve şu an kapalıdır; Windows kabulünü engellemez.
 
 ## 1. Ortak MCP çekirdeği
 
@@ -82,7 +82,7 @@ command: node
 args: ["<projenin mutlak yolu>/dist/src/main.js", "--grant-file", "<MCPSTART tarafından bildirilen pairing.json yolu>"]
 ```
 
-Bu, istemciye verilecek süreç/argüman bilgisidir; belirli bir istemcinin ayar dosyası biçimi değildir. Claude/Codex kişisel ayarları değiştirilmedi; ayrı pilot test Faz 4'tedir.
+Bu, istemciye verilecek süreç/argüman bilgisidir. Faz 4'te `pilot configure` aynı bağlantı için ayrı Codex/Claude/OpenCode proje ayarları ve skill'leri üretir; kişisel ayarlar değiştirilmez. `pilot pair` yeni oturuma açıkça bağlar; istemci MCP yeniden başlatılır. [Pilot rehberi](PILOT_KURULUM.md).
 
 `MCPSTOP` pipe'ı kapatır, sırrı bellekten siler ve kendi eşleştirme dosyasını kaldırır. AutoCAD yeniden başladığında yeni instance/epoch ve eşleştirme gerekir. Oturum süresi 24 saattir. Sırlar için paylaşım/git yok; eşleştirme dosyası modeli talimatla sınırlandıran bir sandbox değildir.
 
@@ -92,7 +92,7 @@ Bu, istemciye verilecek süreç/argüman bilgisidir; belirli bir istemcinin ayar
 
 - Modelspace; çizgi, WCS XY çember, eksenlere paralel kutu. Taşıma/silme çizgi, çember ve bu oturumda üretilen kutularla sınırlı.
 - Birimler `mm`, `m`, `inch`, `drawing_unit`; fiziksel dönüşüm INSUNITS 1/4/6 için. Bilinmeyen birimde fiziksel yazma reddedilir; açık drawing_unit kabul edilir. Inch canlı testi çalıştırılmadı.
-- Tek eşleştirilmiş instance; MCP süreci başına bir normal IPC çağrısı/64 iş admission sınırı. Bağımsız kontrol pipe'ı status/iptali CAD işinden ayırır. Native iki ana bağlantı, tek CAD thread'i; iki istemciden eşzamanlı dedup sınandı. Claude/Codex birlikte kullanım pilotu Faz 4'tedir.
+- Tek eşleştirilmiş instance; MCP süreci başına bir normal IPC çağrısı/64 iş admission sınırı. Bağımsız kontrol pipe'ı status/iptali CAD işinden ayırır. Native iki ana bağlantı, tek CAD thread'i; iki istemciden eşzamanlı dedup sınandı. Codex/OpenCode model pilotları aynı sentetik çizimde sırayla geçti; Claude birlikte kullanım testi çalıştırılmadı.
 - HMAC sırrı + işlem izin listesi; kullanıcı arayüzünden profil verme/iptal yönetimi yok. Windows dosya ACL'si eklenti tarafından oluşturulur; Node ayrıca Windows ACL denetimi yapmaz.
 - Mutasyon başına en fazla 100 hedef; sorgu limit 1000, tarama 10000, çerçeve 1 MiB, iç gövde 512 KiB. Büyük çizim performansı sınanmadı.
 - Ayrı kayıt yalnız oturumun `output` dizinine, `outputRootId=test-output`, düz yeni `.dwg` adı, `overwrite:false`. Alt dizin ve genel kullanıcı kökü seçimi yok.
