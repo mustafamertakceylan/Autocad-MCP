@@ -56,7 +56,7 @@ test('cancellation before send has no effect; after send preserves unknown mutat
   try {
     const client = new BridgeClient(plugin.grantFile, 1000);
     const before = new AbortController(); before.abort();
-    await assert.rejects(client.call('acad_create_line', { instanceId: plugin.grant.instanceId }, before.signal), { code: 'IPC_UNAVAILABLE' });
+    await assert.rejects(client.call('acad_create_line', { instanceId: plugin.grant.instanceId }, before.signal), { code: 'CANCELLED' });
     assert.equal(plugin.calls(), 0);
     const after = new AbortController();
     const pending = client.call('acad_create_line', { instanceId: plugin.grant.instanceId }, after.signal);

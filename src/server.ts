@@ -16,7 +16,8 @@ export function createServer(bridge: BridgeClient): McpServer {
       try { data = await bridge.call(name, validateTool(name, input), context.mcpReq.signal); }
       catch (error) {
         const unknown = error instanceof BridgeError && error.code === 'TIMEOUT_UNKNOWN';
-        data = { status: unknown ? 'unknown' : 'failed', applied: unknown ? null : false, verified: null,
+        const cancelled = error instanceof BridgeError && error.code === 'CANCELLED';
+        data = { status: unknown ? 'unknown' : cancelled ? 'cancelled' : 'failed', applied: unknown ? null : false, verified: null,
           error: { code: error instanceof BridgeError ? error.code : 'VALIDATION_FAILED', message: error instanceof BridgeError ? error.message : 'Invalid arguments', retryable: false } };
       }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data, isError: data.error !== undefined && data.error !== null };
