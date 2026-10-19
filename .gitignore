@@ -1,4 +1,8 @@
 # Ajanların yerel geçici dosyaları ve günlükleri
+.local-notes/
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md
 tmp/
 runtime/
 **/pairing.json

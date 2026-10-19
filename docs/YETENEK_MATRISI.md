@@ -1,6 +1,6 @@
-# Yetenek matrisi (ilk plan)
+# Yetenek matrisi
 
-> Durum: 2026-10-18 ilk plan. Windows prototipinin kanıtlı alt kümesi aşağıdaki tabloda ayrıldı. Mac ve diğer özellikler uygulanmadı; Windows kanıtı Core Console ve görünür masaüstü Faz 2–4 kabulünü (Faz 3: 56 kontrol; Faz 4: Codex/OpenCode model pilotu) kapsar; bütün ürün özellikleri değildir. Tablo ürün vaadi değil; planlama ve kanıt takibi aracıdır.
+> Durum: 2026-10-18 ilk plan. Windows prototipinin kanıtlı alt kümesi aşağıdaki tabloda ayrıldı. Mac uygulanmadı; Faz5 güncellemesi ayrı tabloda; Windows kanıtı Core Console ve görünür masaüstü Faz 2–4 kabulünü (Faz 3: 56 kontrol; Faz 4: Codex/OpenCode model pilotu) kapsar; bütün ürün özellikleri değildir. Tablo ürün vaadi değil; planlama ve kanıt takibi aracıdır.
 
 İlgili belgeler: [Plan](PLAN.md), [Kararlar](KARARLAR.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md). Aşama sütunu güncel Windows hattıdır; Mac sütunu ayrı Faz M kabulüne aittir ve Windows ilerlemesini engellemez.
 
@@ -17,7 +17,23 @@ Genel API'nin belgeli olması, o modülün ilgili platformda çalıştığı anl
 
 İşlem düzeyindeki belge kanıtı [özellik envanterinde](OZELLIK_ENVANTERI.md) tutulur. İlk araştırma kapsamındaki geniş modüller ile aşağıdaki prototip alt kümesi ayrıdır; API adayı bulunması canlı doğrulama değildir. İlk araç ve test taslakları: [iletişim sözleşmesi](ILETISIM_SOZLESMESI.md), [teknik deneme kabulü](TEKNIK_DENEME_KABUL.md).
 
-## Matris
+## Güncel Windows Faz 5 alt kümesi — 2026-10-19
+
+Yeni normal OFF modül `build/phase5-native` altında 52 araç içerir. [Faz 5 kabul tablosu](TEKNIK_DENEME_KABUL.md#9-faz-5-windows-paket-kabulleri) güncel kanıttır; aşağıdaki ilk plan tablosu Faz 2–4 tarihçesidir, Faz 5 kapsamını geçersiz kılmaz.
+
+| Paket | Uygulanan Windows 2027 alt küme | Sınır |
+|---|---|---|
+| Teknik resim | Katman/ACI/kalınlık, text/dimension/linetype stilleri; TEXT/MTEXT, ölçü/sapma | Non-associative ölçü, açık sapma; otomatik geçme seçimi yok |
+| İleri2B | ARC/LWPOLYLINE, transform/dizi, offset/trim/LINE extend/fillet/chamfer | WCS XY ve açık seçim; eğri türü sınırları şemalarda |
+| Blok/veri | Define/insert/get/attributes, BOM ve native TABLE | Yerel planar tanım; nested BOM yok |
+| Katı/mekanik | Extrude/revolve/boolean, gerçek delik/havşa/kademeli delik, mil, section REGION, HATCH, FCF, kütle | Açık geometri/yoğunluk; FCF görsel bounds unavailable; ISO/FEA/CAM iddiası yok |
+| Pafta | Modelspace kamera, ölçekli layout/viewport, iki izinli PDF aygıtı | Kâğıt mm; fiziksel yazıcı ve overwrite yok |
+| Xref | Staged DWG attach/overlay, list/reload/unload/bind/detach | Özel input kökü, nested/dependency preflight, tüm direct model refs açık; dosya yazılmaz |
+| Otomasyon | En fazla24 typed create adımı, atomik rollback, tek revision/ID | Her alt araç ayrıca izinli; keyfi komut/LISP yok |
+
+Mac bu satırların hiçbirinde derlenmedi/test edilmedi. Güncel52 araç doğrudan MCP SDK istemcisiyle native Core Console testindedir; Faz4 model pilotları tarihî14 araç alt kümesidir.
+
+## İlk plan / Faz 2–4 tarihçesi
 
 | Modül | Örnek işlemler | Windows 2027 | Mac 2027 | Gerçek test | Aşama | Not |
 |---|---|---|---|---|---|---|
@@ -37,6 +53,21 @@ Genel API'nin belgeli olması, o modülün ilgili platformda çalıştığı anl
 ## İstemci pilotu — Faz 4
 
 Windows AutoCAD 2027 normal modülüyle Codex CLI 0.160.0 ve OpenCode 1.18.34 / EVREN MiMo V2.6 Pro gerçek model akışı geçti. 20 LINE + 1 CIRCLE profil (80×40 mm, Ø10), sorgu, taşıma/geri taşıma, geçici nesne oluştur/sil ve iki ayrı DWG kaydı/reopen doğrulandı. Pilot configure/doctor/pair ve Codex/Claude/OpenCode skill dosyaları hazır. Claude canlı modeli limit yokluğu nedeniyle **çalıştırılmadı**; statik config/skill kontrolü uygulandı. Başka istemciler için genel uyumluluk veya temiz cihaz iddiası yok. Kanıt: [W-phase4 kabulü](TEKNIK_DENEME_KABUL.md); kurulum: [pilot rehberi](PILOT_KURULUM.md).
+
+## Faz 6 Windows özel paket — 2026-10-19
+
+| Alan | Kanıtlı durum | Sınır |
+|---|---|---|
+| Windows x64 / tam AutoCAD2027 | Güncel preview6: paket içi Node24, normal ARX ve tepsi EXE'si; ZIP kurulum/gerçek MCP çizim/kayıt/reopen28/28; native338/338 | Geliştirme bilgisayarı; ayrı temiz VM değildir |
+| Durum / sistem tepsisi | Preview10: kırmızı tema/özgün EXE-tepsi logosu; AutoCAD ve MCP için numaralı Kurulum rehberi, istemci seçimi ve komut kopyalama/yapıştırma görüldü. Preview7'de gerçek AutoCAD Bağlan,52 araç/1 MCP, istemci üretimi, Tab/Space ve tepsiye gizle/aynı pencere kabulü | Preview10'da önceki canlı CAD/kurulum testleri tekrarlanmadı; ARX/server/Node/installer aynı. Tepsi sağ tık/Explorer restart/temiz cihaz açık |
+| Yeniden bağlantı | Aynı açık MCP transportuyla AutoCAD restart ve iki hostta açık seçim23/23; kuyruktaki eski hedef retleri ortak testte | Sessiz otomatik hedef seçimi yok; model yeni instance/belgeyi keşfeder |
+| Windows açılışında başlatma | Varsayılan kapalı seçenek, `--tray`, kendi kayıt sahipliği8 sentetik registry kontrolünde | Gerçek Run kaydı/reboot/Start menüsü kurulumu denenmedi |
+| Kurulum yaşam döngüsü | Yükseltme, önceki sürümü koruma, geri alma, veri silmeden kaldırma, kesinti kurtarma, hash/junction/kilit ve native kimlik retleri | Gerçek yeni ürün sürümü değil, ikinci sentetik paket aynı ikililerle denenmiştir |
+| Codex/Claude Code/OpenCode config ve mevcut skill | Kurulu runtime yoluna üretim ve üç sabit resource kabulü | Yeni teknik resim doğruluğu skill'i ertelendi; Claude canlı modeli çalıştırılmadı |
+| AutoCAD bundle autoload | Win64/AutoCAD/R26.0 manifesti üretildi | Otomatik yükleme/güven ekranı temiz cihazda çalıştırılmadı |
+| İmzalama/genel yayın | Node imzası Valid, ARX/tepsi EXE NotSigned; yayın kapısı kapalı | Proje lisansı ve dağıtım onayı yok; Mac ayrı Faz M |
+
+Kanıtlar [Faz6 kabulünde](TEKNIK_DENEME_KABUL.md#11-faz-6--windows-özel-zip-ve-kurulum-yaşam-döngüsü); kullanım [Windows kurulumunda](WINDOWS_KURULUM.md).
 
 ## Platform API notları
 

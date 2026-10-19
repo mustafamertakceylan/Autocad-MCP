@@ -1,6 +1,6 @@
 # Windows pilotu: Codex, Claude ve OpenCode
 
-Bu akış geliştirici derlemesi olan **tam AutoCAD 2027 / Windows x64** içindir. Otomatik eklenti kurulum paketi, temiz cihaz kabulü ve genel yayın Faz 6'dadır. Mac ayrı Faz M'dir. İstemcilerin destek durumu ve gerçek sonuçlar [kabul belgesindedir](TEKNIK_DENEME_KABUL.md).
+Bu akış kaynak geliştirme derlemesi olan **tam AutoCAD 2027 / Windows x64** içindir. Faz6'daki paket içi Node/bundle ile özel önizleme kurulumu [Windows kurulum rehberindedir](WINDOWS_KURULUM.md). Temiz cihaz kabulü ve genel yayın henüz yapılmadı. Mac ayrı Faz M'dir. İstemcilerin destek durumu ve gerçek sonuçlar [kabul belgesindedir](TEKNIK_DENEME_KABUL.md).
 
 ## Nasıl çalışır?
 
@@ -40,7 +40,7 @@ node dist/src/pilot.js configure --workspace "C:\CAD-Pilot" --grant-file "<MCPST
 node dist/src/pilot.js doctor --session-file "C:\CAD-Pilot\autocad-session.json"
 ```
 
-`doctor` çıktısında gerçek bağlantı için `connected:true`, `backend:"objectarx"`, `simulation:false` beklenir. Bu sorgu model çağırmaz. `toolCount:14` mevcut alt kümedir; AutoCAD'in bütün komutları anlamına gelmez.
+`doctor` çıktısında gerçek bağlantı için `connected:true`, `backend:"objectarx"`, `simulation:false` beklenir. Bu sorgu model çağırmaz. `toolCount` sunucunun güncel katalog sayısıdır (Faz5:52); bağlanan eski eklenti14 araçta kalabilir, gerçek izin/yetenek listesi ayrıca okunur; AutoCAD'in bütün komutları anlamına gelmez.
 
 Oluşan yapı:
 
@@ -54,11 +54,12 @@ Her istemciyi kendi çalışma klasöründe aç. Proje güvenini ve istemcinin g
 
 Skill'in tek kaynak kopyası [SKILL.md](../skills/autocad-mcp/SKILL.md) dosyasıdır. Hedef/birim belirleme, ölçülü çizim, eski revision, belirsiz sonuç, geri okuma ve güvenli kayıt akışını tarif eder. Modelin bu talimatları izlemesi teknik yetki sınırı yerine geçmez.
 
-Kabuk/dosya skill okumasını engelleyen istemciler için aynı talimatlar iki sabit MCP resource ile okunabilir:
+Kabuk/dosya skill okumasını engelleyen istemciler için aynı talimatlar üç sabit MCP resource ile okunabilir:
 
 ```text
 skill://autocad-mcp/autocad-mcp/SKILL.md
 skill://autocad-mcp/autocad-mcp/references/tools.md
+skill://autocad-mcp/autocad-mcp/references/mechanical.md
 ```
 
 Bunlar standart MCP resource'lardır; yeni CAD aracı, keyfi dosya okuma veya ayrı bir skills protokolü değildir. İstemcinin resource okuyabilmesi gerekir. Paket taşınırsa yeniden derleme/yapılandırma gerekir; üretilen yollar mutlaktır.
@@ -75,7 +76,7 @@ Kayıt yalnız eşleştirilmiş oturumun `output` köküne, yeni düz `.dwg` ad�
 
 Mevcut araçlar: keşif/durum/yetenek, belge listesi/bilgisi, sorgu/tek nesne, çizgi/çember/kutu oluşturma, taşıma/silme, işlem durumu, ayrı DWG kaydı. Makinece okunur gerçek input/output şemaları ve annotations: [TOOL_CATALOG.json](TOOL_CATALOG.json), yeniden üretme: `npm run catalog`. Girdi şemaları katıdır; çıktı şeması halen genel JSON object'tir. Ayrıntılı alan/durum sözleşmesi [skill referansında](../skills/autocad-mcp/references/tools.md) ve [iletişim sözleşmesinde](ILETISIM_SOZLESMESI.md) bulunur; her sonuç için dar, statik çıktı tipi garantisi verilmez.
 
-Native ölçülendirme, yazı, katman/stil yazma, polyline, ileri 3B, PDF ve serbest LISP/komut henüz yoktur. 20 ayrı LINE kapalı polyline değildir; 2B çember fiziksel 3B delik değildir. Fotoğraf deneyinde yalnız ölçülü profil ve çember üretildi; ölçü okları/yazıları üretilmedi.
+Önceki 14 araçlı Faz4 pilot fotoğraf deneyinde yalnız profil ve çember üretildi; ölçü okları/yazıları yoktu. Faz5'in52 araçlı modülü native ölçü, yazı, katman/stil, polyline, katı modelleme ve PDF de sunar; güncel instance capability listesi esas alınır. Serbest LISP/komut aracı yoktur. 20 ayrı LINE kapalı polyline değildir; 2B çember fiziksel3B delik değildir.
 
 ## 4. AutoCAD yeniden açılınca
 
@@ -95,3 +96,9 @@ Ardından istemcinin MCP bağlantısını yeniden başlat ve belge kimliklerini 
 - [OpenCode MCP](https://opencode.ai/docs/mcp-servers/), [skills](https://opencode.ai/docs/skills/), [yapılandırma](https://opencode.ai/docs/config/), [izinler](https://opencode.ai/docs/permissions/)
 
 2026-10-18: Codex ve OpenCode ile gerçek AutoCAD pilotu yürütüldü. Claude için dosya/skill hazırlığı ve statik kontroller vardır; limit olmadığı için canlı model çağrısı **çalıştırılmadı**. Başka istemci/sürüm, temiz cihaz ve kullanıcı çizimlerinde genel ürün kabulü iddia edilmez.
+
+## Faz 5 geliştirme modülüne geçiş
+
+Güncel52 araç `build/phase5-native/Release/AutocadMcp.arx` normal OFF derlemesindedir. Çalışan eski eklenti binary dosya değişince kendiliğinden güncellenmez. Kişisel çizim/oturum kapatılmaz; uygun yeni AutoCAD oturumunda yeni modül yüklenip `MCPSTART` yapılır ve yeni pairing ile yeni/boş pilot çalışma klasörü üretilir. Eski skill kopyaları da kendi kendine güncellenmez; `configure` güncel canonical bundle'ı yeni klasöre kopyalar. Kişisel istemci ayarları üzerine yazılmaz.
+
+Xref kaynağını operatör özel pairing klasörünün `input/` altına kopyalar; MCP yalnız `inputRootId=session-input` ve düz DWG adı alır. Eklentinin verdiği kökün dışı kabul edilmez. Bu ilk akış genel dosya tarayıcısı/istemci upload API'si değildir. Xref'i bind etmeden alınan kopyanın dış DWG bağımlılığı sürer.

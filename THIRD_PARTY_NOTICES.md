@@ -1,6 +1,6 @@
 # Üçüncü taraf bağımlılıkları
 
-Bu dosya proje için bir lisans seçmez. Projenin kendi lisansı henüz onaylanmadı.
+Projenin kendi kaynak kodu kullanıcı kararıyla Apache-2.0 lisanslıdır; LICENSE ve NOTICE geçerlidir. Aşağıdaki üçüncü taraflar kendi lisanslarını korur.
 
 | Bileşen | Sürüm | Lisans / kullanım |
 |---|---|---|
@@ -11,4 +11,6 @@ Bu dosya proje için bir lisans seçmez. Projenin kendi lisansı henüz onaylanm
 | Autodesk ObjectARX 2027 SDK | Windows 2027 | Autodesk'in kullanıcı tarafından kabul edilen ayrı SDK koşullarına tabidir; açık kaynak bağımlılığı değildir. SDK veya kütüphaneleri Git'e eklenmez. |
 | AutoCAD 2027 | Windows test ortamı | Ayrı kurulum/lisans gerekir; ürün bu depoyla dağıtılmaz. |
 
-Tam bağımlılık ağacı ve bütünlük hash'leri `package-lock.json` içindedir. Gelecekte ikili/npm dağıtımı yapılmadan önce tüm transitif bağımlılıkların lisans ve bildirimleri paketlemeye dahil edilmelidir; dağıtım henüz yapılmadı.
+Tam bağımlılık ağacı ve bütünlük hash'leri `package-lock.json` içindedir. Üretim bağımlılıklarının lisans ve bildirimleri pakete dahil edilir; npm yayını yapılmaz. İmzalı/temiz cihaz kabulü tamamlanmış dağıtım sonraki iştir.
+
+v1.0.0 imzasız public önizlemesi için proje LICENSE/NOTICE, Node24 tam LICENSE, üretim bağımlılıklarının kendi lisansları ve nlohmann/json bildirimleri pakettedir. Autodesk SDK başlıkları/kütüphaneleri/host DLL'leri pakete veya Git'e eklenmez. Resmî [ObjectARX2027 koşulları](https://aps.autodesk.com/developer/overview/autocad-objectarx-sdk-licensing) incelendi: hedef tam AutoCAD'dir; LT desteği verilmez. Bu kontrol Autodesk SDK'sının Apache-2.0 olduğu veya Autodesk onayı alındığı anlamına gelmez.

@@ -1,8 +1,19 @@
 # Yerel MCP–AutoCAD iletişim sözleşmesi
 
-> 2026-10-18, iç protokol `0.1.0`. Windows prototipi uygulandı ve Core Console ile sınandı. Aşağıdaki §0, mevcut kodun desteklediği profildir; gelecekteki genel sözleşme ayrıntılarının hepsi uygulanmış değildir. Mac native taşıması ve arm64 derlemesi yapılmadı.
+> 2026-10-18, iç protokol `0.1.0`. Windows prototipi uygulandı ve Core Console ile sınandı. Aşağıdaki §0 tarihî çekirdek profildir; güncel Faz5 ek profili önceliklidir; gelecekteki genel sözleşme ayrıntılarının hepsi uygulanmış değildir. Mac native taşıması ve arm64 derlemesi yapılmadı.
 
 İlgili belgeler: [Plan](PLAN.md), [Kararlar](KARARLAR.md), [Envanter](OZELLIK_ENVANTERI.md), [Kabul ölçütleri](TEKNIK_DENEME_KABUL.md), [Kaynak notları](arastirma/ASAMA1_KAYNAK_NOTLARI.md). Güncel uygulama Windows kapsamındadır; Mac taşıması ve doğrulaması ayrı Faz M'de yürütülür, Windows fazları için ön koşul değildir.
+
+## Faz 5 ek uygulama profili — 2026-10-19
+
+İç transport0.1.0 aynı kalır; araç kataloğu52 ve sabit public skill resource sayısı3 oldu. §0'daki14 araç/projection/box kısıtları tarihî çekirdektir; güncel araç ve alan otoritesi [TOOL_CATALOG.json](TOOL_CATALOG.json), [skill sözleşmesi](../skills/autocad-mcp/references/tools.md) ve src/tools.ts/native kaynaklarıdır. Generic object çıktı şeması sürer. Windows normal modül build/phase5-native; eski açık modül otomatik güncellenmez.
+
+- Katman/stil, annotation, ileri2B, blok/nitelik, katı/drill/kütle, REGION/HATCH/TABLE/FCF, kamera, paper layout/PDF, staged xref ve create-only batch eklendi. Ana entity araçları modelspace, paper viewport araçları ayrı bağlamdır.
+- Projection en fazla64 alan; grant en fazla64 işlem adı ve ad başına128 karakter. Katalog artışı önceki grant'e otomatik yeni izin vermez. Batch için ana işlem ve her alt araç izni kabulde ve kuyruktan çıkarken yeniden kontrol edilir.
+- Boolean/drill eski hedefi silip YENİ solid/entityRef döndürür; kopya hesaplaması native modeler failure'ın asıl gövdeyi tüketmesini önler. Batch24 adım, tek revision/operationId, atomik rollback; ham LISP/komut yok.
+- Save_copy yerel metadata/normal named block, desteklenen paper layout/viewport ve xref deklarasyonlarını karşılaştırır. Xref dependent semboller yerel metadata sayılmaz; dış dosyanın gelecekteki içeriği ve tüm DWG data doğrulanmaz. FCF ve xref görsel bounds unavailable.
+- PDF yalnız izinli PC3+canonical media ve yeni düz PDF; private output, no-overwrite atomik yayın. Native completion/header kontrolü ayrı, görsel okunurluk render kabulü ayrıdır. Xref yalnız private session-input staged DWG,64MiB, no-reparse pinning, dependency preflight; reload/bind yeniden doğrular.
+- Güncel kabul [Faz5 tablosunda](TEKNIK_DENEME_KABUL.md#9-faz-5-windows-paket-kabulleri). Mac, genel istemci/model uyumluluğu ve tüm masaüstü fault suite bu güncellemeyle test edilmiş sayılmaz.
 
 ## 0. Uygulanan Windows profili
 
@@ -139,6 +150,8 @@ Tablodaki Target/Mutation/GeometryMutation yukarıda tanımlı **zorunlu** alan 
 `saveAs(...,bBakAndRename=false,...)` açık belge adını koruyan adaydır; orijinal byte'ları, dirty/DBMOD ve INSUNITS korunması Core Console ve masaüstü temel kabulünde ayrıca sınandı. Doğrulanamazsa save_copy yeteneği kapalı kalır. Output yayımlandıktan sonra hata olursa dosya yokmuş gibi `applied:false` dönülmez; gerçek etki/unknown döner. Doğrulama sonrası mevcut kaydı silip yeniden üretme otomatik yapılmaz.
 
 ## 9. Hatalar
+
+Faz6 kurulu Windows paketinin gerçek ek kontrolü: pairing ve IPC el sıkışmasındaki `nativeBuildId` paketle sabitlenen kaynak/test-bayrağı kimliğidir. Farklı veya eksik kimlikte adaptör **`VERSION_MISMATCH`** döndürür; CAD isteği gönderilmez. Bu uygulanmış kod, aşağıdaki ilk taslaktaki `PLUGIN_VERSION_MISMATCH` önerisinden ayrıdır. Operatör eşleşen eklentiyle AutoCAD'i yeniden açar, yeni pairing'i açıkça seçer ve istemci MCP bağlantısını yeniden başlatır; pairing dosyasını elle değiştirerek kontrol atlanmaz. Kaynak geliştirme sunucusu kimliği zorunlu tutmaz; kurulu dağıtım kabulü sayılmaz.
 
 Bootstrap/bağlantı kodları ayrıca tanımlanır: `ACAD_NOT_RUNNING` yalnız süreç yokluğu kanıtlandığında; `PLUGIN_NOT_LOADED` yalnız eklenti yokluğu biliniyorsa; `PLUGIN_VERSION_MISMATCH` sürüm uyuşmazlığı; `IPC_UNAVAILABLE` endpoint/taşıma kurulamadı; `IPC_AUTH_FAILED` eşleştirme/çağıran doğrulama reddi. Erişim reddi eklenti yokluğu diye yorumlanmaz. El sıkışma reddi JSON-RPC error.data.code içinde, yerel discovery/status tanısı yapılandırılmış sonuçta taşınabilir. Bunlar aşağıdaki 20 domain kodundan ayrıdır. İlk katalogda UNDO aracı yoktur; planın UNDO_FAILED gelecekteki undo otomasyonu içindir. CANCELLED iç iptal hata kodudur; cancelled terminal durumudur; eski STALE_HANDLE ayrımı bu taslakta STALE_DOCUMENT veya TARGET_NOT_FOUND ile açıklanır.
 

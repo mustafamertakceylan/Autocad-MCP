@@ -6,7 +6,7 @@
 > - **Öneri:** Teknik yön; karar değil, uygulanmadı ve doğrulanmadı.
 > - **Açık:** Henüz karar yok; tahminle doldurulmaz.
 
-İlgili belgeler: [Plan](PLAN.md), [Yetenek matrisi](YETENEK_MATRISI.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md), [Ajan kuralları](../AGENTS.md).
+İlgili belgeler: [Plan](PLAN.md), [Yetenek matrisi](YETENEK_MATRISI.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md), [Geliştirme rehberi](GELISTIRME.md).
 
 ## 1. Sabit kullanıcı kararları
 

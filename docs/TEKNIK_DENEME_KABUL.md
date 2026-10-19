@@ -202,3 +202,172 @@ Azami çerçeve (1 MiB), sayı/string/dizi sınırları pozitif testin parçası
 - Autodesk `AcDb3dSolid::createBox` — kutu orijinde merkezli; boyut `< 1e-6` ise hata: <https://help.autodesk.com/cloudhelp/2027/ENU/OARX-RefGuide/files/OARX-RefGuide-AcDb3dSolid__createBox_double_double_double.html>
 
 Test komutları ve çerçeve mevcut; CI ve ayrı lint yapılandırması yok. Tip denetimi npm test içindeki TypeScript build ile yapıldı. Yukarıda belirtilmeyen kabul yolları **çalıştırılmadı**. Windows Faz 2–3, yukarıdaki sınırlı profil ve kanıtlarla kapandı. Çalıştırılmayan varyantlar açıkça etiketlidir; sınırsız hata/stres veya genel ürün kabulü değildir. Mac satırı yalnız Faz M kabulüne aittir; Windows fazları için ön koşul değildir.
+
+## 9. Faz 5 Windows paket kabulleri
+
+2026-10-19. Windows AutoCAD2027/Core Console X.60.0.0, stock-template sentetik kopyaları, resmi MCP SDK stdio istemcisi→TypeScript sunucu→imzalı yerel IPC→ObjectARX. Yönetici kendisi geliştirdi/test etti; dış model/ajana iş verilmedi. Normal modül `build/phase5-native`, `AUTOCAD_MCP_TESTING=OFF`. Yeni52 araç ve üç public skill resource kataloglandı; çalışan eski eklentinin otomatik güncellendiği iddia edilmez.
+
+**İlk11 paket: 323/323 kontrol.** Toplu kanıt `tmp/phase5-regressions/4e661a2a-e13c-422e-8a41-79fd900d8f52/results.json`; her paket kendi yeni sürecini/kaynağını kullanır. O sürümün normal ARX SHA256: `1521835ef9836e98cd7f0639fbcb386333efe97421c87b5a0251365fe4a4c86b`. Sonraki braket testi ve PDF düzeltmelerinin güncel kabulü §10'dadır.
+
+| Paket | Kontrol | Gerçek sınama | Nihai paket kanıtı |
+|---|---:|---|---|
+| annotations | 86/86 | Gerçek DIMENSION, sapma, yazı, katman/stil/linetype, birim, UNDO, DWG reopen | `tmp/phase5-runs/8aacf6a4-3122-4686-8fdb-45d40170e06e/results.json` |
+| geometry2d | 31/31 | ARC/LWPOLYLINE, copy/rotate/scale/mirror, doğrusal/dairesel diziler, kayıt | `tmp/phase5-runs/2263a6e9-1086-4135-a8e5-57eb4f8f4bde/results.json` |
+| curve-edits | 44/44 | Offset, trim, LINE extend, fillet/chamfer, yanlış sınır/no-effect ve kayıt | `tmp/phase5-runs/5f60a30d-6da6-40b0-805b-cb4cc6780ec6/results.json` |
+| blocks | 23/23 | Tanım/insert/nitelik, transform ve unknown-tag atomik ret, unused block korunumu | `tmp/phase5-runs/e9827a55-2c15-422d-9b30-edc660593e5f/results.json` |
+| solids | 41/41 | Extrude/revolve/boolean, gerçek Ø10 delik, volume/area/centroid/kütle, CW/mirror/+Z, reopen | `tmp/phase5-runs/1d8d133c-afa9-48b5-badc-4f9974ccb491/results.json` |
+| detailing | 28/28 | HATCH, yatay/dikey REGION kesit, BOM/TABLE, yanlış satır boyutu rollback ve reopen | `tmp/phase5-runs/45be9e71-70a3-49a3-83ec-eb1844d9b15f/results.json` |
+| machining | 19/19 | Delik dairesi, kademeli delik/havşa, kademeli mil, FCF; yanlış ikinci delik atomik ret | `tmp/phase5-runs/74a873ba-a2fb-4a70-9a6c-3b1cebef41ff/results.json` |
+| plotting | 19/19 | Native1:1 A4 viewport, PDF, overwrite/hash ret, DWG pafta reopen | `tmp/phase5-runs/91afd811-6d49-4671-9350-238eead54296/results.json` |
+| xrefs | 20/20 | Staged attach/overlay, nested ret, unload/reload/bind/detach, kaynak hash ve kayıt | `tmp/phase5-runs/3f7454f7-1bcd-42d2-bdc2-ac014c2a84c0/results.json` |
+| batch | 6/6 | Tek revision/ID, dedup, ikinci adım hatasında tam rollback, DWG kayıt | `tmp/phase5-runs/e5b42eb0-ae99-4eba-a942-99dcc19366d6/results.json` |
+| views | 6/6 | Üst/ön/sağ/izometrik kamera, birim dönüşümü, nesne korunumu | `tmp/phase5-runs/ac6e4ad9-cf82-4e22-9c1d-cfb9185d9a24/results.json` |
+
+Eski çekirdek aynı normal modülde ayrıca mm26, metre26, birimsiz9 olmak üzere **61 kontrol** geçti. Kanıt `tmp/phase5-core-6f639741-2cdb-42f6-9ae0-80de3791e7dd/results.json`; alt kanıtlar `tmp/live-runs/f69d96af-49e6-45ac-ab20-f7421e8489b8`, `ff7cea55-0826-49db-9484-f34a51299ea2`, `edd38322-101b-4c6c-a870-b5e5ad2daa62`. Bu çağrılarda çekirdeğin opsiyonel ayrı UNDO varyantı açılmadı; Faz5 annotation paketinde gerçek UNDO/revision kabulü geçti. Eski live harness'in çıkış yanıtı `_Y` discard olarak düzeltildi.
+
+`npm test` **33/33**, `npm run check`, CTest **1/1**, Skill Creator quick_validate başarılı. Sandbox içinde pointer rename EPERM verdi; aynı yerel IPC/istemci testi normal kullanıcı izinleriyle geçti, ACL değiştirilmedi. Validator sistem Python'ında eksik PyYAML için mevcut proje içi `tmp/skill-validation-deps` PYTHONPATH kullanıldı; global paket/ayar değiştirilmedi. `npm run catalog`:52 araç/3 resource. Codex/Claude/OpenCode bundle kopyalama, yeni katalog ve sabit resource akışı resmi SDK testindedir; Claude canlı modeli veya yeni52 aracın diğer AI modelleriyle pilotu **çalıştırılmadı**.
+
+### Yakalanıp düzeltilen farklar
+
+- WBLOCK kullanılmayan yerel katman/stil/block kayıtlarını atabiliyordu; eksikler kontrollü clone ve reopen karşılaştırmasıyla korunur. Xref-dependent kayıtlar yerel metadata sayılmaz; xref deklarasyonları ayrıca karşılaştırılır.
+- MTEXT CRLF normalize edilir; reopen handle'ları yeniden numaralanabildiğinden karşılaştırma geometriye dayanır. Mirror ARC uç sırası native CCW normalizasyonunu dikkate alır.
+- BlockReference native transform attribute'ları zaten taşıyordu; ikinci taşıma kaldırıldı, kilit kontrolü korundu.
+- Boolean API operand gövdelerini hata durumunda tüketebilir; önce detached kopyalarda hesaplanır, kaynak ancak sonuç hazırken transaction içinde değiştirilir. Extrude explicit WCS Z yön vektörü kullanır; CW/mirrored normal sonucu ters çeviremez.
+- FCF metin/konum/height/scale/style yeni süreçte aynı kaldı; render edilmemiş side database bounds cache'i farklıydı. FCF görsel bounds ölçülmüş veri sayılmaz, sorguda unavailable. Xref dış dosya bounds'ı da host-geometri doğrulaması sayılmaz.
+- Plot aygıt stringleri refresh öncesi kopyalanır. Aktif viewport numarası kalıcı kimlik değildir; ilk kabulde paper viewport getViewportArray ilk ID ile ayrılıyordu. Çoklu layout/sideDB eksik array durumu sonraki §10 düzeltmesiyle ele alındı. Medya eşleştirmesi sonrası seçilen canonical adın tam eşitliği zorunludur.
+- Native TABLE satırı isteği sessiz büyütebiliyordu; width/row/text boyutu commit öncesi kontrol edilir, uymazsa rollback. Negatif test geometriyi korurken abort bildirimlerinin revision'u16→50 artırdığını yakaladı; Transaction destructor kendi abort bildirimlerini dış edit saymayacak şekilde bastırır. Nihai test hem geometriyi hem revision'u korudu.
+
+### PDF görsel kontrolü ve sınırlar
+
+`tmp/phase5-runs/eab87581-a890-4992-abdf-fb0d0235e996` örneğinin A4 PDF'si PDFium ve Poppler ile render edildi; `render.png`/`poppler-render.png` yerel kanıttır. Bir sayfa, MediaBox yaklaşık297.039×209.903mm, gerçek80/40 ölçüleri ve başlık okunur; kırpılma/çakışma görülmedi. Bu çizim basit dikdörtgen pilotudur, fotoğraftaki çentikli parçanın yerine geçtiği iddia edilmez. Native dosya `runtime/exports/phase5-eab87581-a890-4992-abdf-fb0d0235e996/mechanical-a4.pdf`. PDF reader Autodesk çıktısında yinelenen PageMode metadata anahtarı uyarısı verdi; dosya render oldu, çıktı yeniden yazılmadı. Görsel inceleme baskı kalibrasyonu veya her font/aygıt/çizim için kabul değildir.
+
+Windows ana paketler sınırlı geliştirici kabulündedir. Güncel test-controls ON modülü ayrıca derlendi; unsupported fixture artık POINT'tir, çünkü ARC destekleniyor. Yeni modülde tam masaüstü Faz3 hata-enjeksiyon senaryosu **çalıştırılmadı**; eski56/56 sonucu yeni52 aracın tamamına genellenmez. Mac/AppleSilicon, Claude canlı model, gerçek müşteri/büyük çizim, yüzey/mesh, kaynak-pürüzlülük sembol kütüphanesi, otomatik ISO fit/standart parça, sac/dişli/yay, FEA/CAM, HTTP ve temiz cihaz/installer/yayın bu kabulle tamamlanmış değildir. Üretim sertifikası/ISO uyumu iddiası yok. Yeni commit/push yapılmadı.
+
+Uygulama ve yeniden üretme: `npm run test:phase5:windows` (AUTOCAD_MCP_PHASE5_TEST=1), [geliştirme](GELISTIRME.md), [mekanik kapsam](MAKINE_MUHENDISLIGI.md), [gerçek araç sözleşmesi](../skills/autocad-mcp/references/tools.md).
+
+API dayanakları: [Boolean operand davranışı](https://help.autodesk.com/cloudhelp/2027/ENU/OARX-RefGuide/files/OARX-RefGuide-AcDb3dSolid__booleanOper_AcDb__BoolOperType_AcDb3dSolid_.html), [explicit extrusion](https://help.autodesk.com/cloudhelp/2027/ENU/OARX-RefGuide/files/OARX-RefGuide-__MEMBERTYPE_Methods_AcDb3dSolid.html), [FCF veri/stil ve sembol kodları](https://help.autodesk.com/cloudhelp/2018/ENU/OARXMAC-RefGuide/files/OREFMAC-AcDbFcf__setText_ACHAR__.html), [paper viewport kimliği](https://help.autodesk.com/cloudhelp/2018/ENU/OARXMAC-RefGuide/files/OREFMAC-AcDbLayout__getViewportArray.html), [Plot-to-File](https://help.autodesk.com/cloudhelp/2021/ENU/OARX-DevGuide/files/GUID-FBD88D4D-B266-447B-B64F-47A132CDE138.htm). Yerel SDK2027 başlıkları derleme otoritesidir; eski belge sürümleri güncel native kabulün yerine geçmez.
+
+## 10. Braket denemesinde yakalanan PDF farkları
+
+2026-10-19. Kullanıcı üçüncü açı/üç görünüş/dolu antet için GPT-6.1-Sol, EVREN MiMo ve DeepSeek Pro high çizim testini paralel yetkilendirdi. Bu bölüm kaynak geliştirmesinin dış ajana verildiği anlamına gelmez. Ajanlar yalnız ayrı sentetik çizimlere MCP üzerinden yazdı. Çizimin mühendislik doğruluğu ile başarılı araç/CLI çıkışı ayrı değerlendirilir. Yerel çıktı klasörü `runtime/exports/uc-gorunus-2026-10-19`; başlangıç run'ı `tmp/bracket-benchmarks/38df475b-b3e8-40d9-814a-c7804313aa8c`.
+
+Codex özgün PDF'sinde başlık/arka yuvarlak görünüş kırpıldı. Gerçek normal yatay A4 margins `[5,17,5,17]`, plotOrigin `[0,0]` idi. Fiziksel kâğıt koordinatını printable alan başlangıcından ayırmak için yeni layout'un origin'i `[-left,-bottom]` yapılır. Sorguda `plotMarginsMm`, `plotOriginMm`, `plotCentered` ve katmanda `plottable` okunur. Kenar payları ve kâğıt boyutları native canonical medya eksenindedir;90° durumunda görüntü koordinatlarına dönüştürülür. Fiziksel sayfaya sığmak basılabilir alana sığmak demek değildir;10mm çerçeve için kurulu kenarsız A4 seçilir.
+
+Floating viewport sınırı geometri değildir: yeni viewport `_MCP_VIEWPORT_NONPLOT` katmanındadır ve bu katman basılmaz. Uyumsuz aynı adlı mevcut katman değiştirilmez, oluşturma reddedilir. Çoklu pafta save/reopen testi, inactive/side database'de `getViewportArray()` sonucunun güvenilir bir overall-viewport ayıracı olmadığını da yakaladı. Overall viewport layout block-record'undaki ilk viewport ve aktifken number1 ile ayrılır; tarama1000 nesneyle sınırlıdır. Kaydı doğrulama atlanmaz; source geometry/hash/revision korunumları sınanır.
+
+- Normal ARX SHA256 `a48ea6686a8f54bbe7c88a3d54db16fd2088218914b594b106b900862f64e6d5`.
+- Yeni11 paket **335/335**: `tmp/phase5-regressions/f1f1a90f-593b-4a57-9e4d-917be5697aa1/results.json`. Önceki323 sonucu aynı binary sonucu diye sunulmaz.
+- Sonraki normal/kenarsız/90° A4 genişletmesi **34/34 native**: `tmp/phase5-runs/3f3157c5-0800-4dbe-a66d-0bb339ea2b43/results.json`; değişen yalnız test kapsamıdır, ARX aynı.
+- Gerçek üç PDF'de dört köşe glifi ve1:1 aralıkları bağımsız PDFium ile ölçüldü: `test/pdf-paper-positions.py`; kanıt `runtime/exports/phase5-3f3157c5-0800-4dbe-a66d-0bb339ea2b43/pdf-paper-positions.json`.190/142mm aralıkları, normal/rotated glif yerleri0.75pt fark sınırı geçti. İlk rotated karşılaştırma PDF'nin270° sayfa dönüşünü normalize etmiyordu; test düzeltildi, CAD geometrisi beklenene uydurulmadı. Poppler rotated PDF render'ı ayrıca görüldü.
+- `npm run check`, normal izinle `npm test`33/33, CTest1/1 geçti. Sandbox rename EPERM tekrar görüldü; ACL değiştirilmeden normal izinle geçti.
+
+Özgün model DWG/PDF'leri korunur. Yeni baskı motoruyla yönetici tarafından tekrar alınan PDF'ler modelin şekil/ölçü hatalarını düzeltmez ve bağımsız ilk model çıktısı gibi sunulmaz. Bu kabul Mac, Claude, bütün52 aracın her modelde denenmesi veya üretim çizimi/standart sertifikası değildir. Kullanıcının koşullu commit/push talebi, geometrik doğruluk kapısı geçmeden uygulanmaz.
+
+### İstemci şema uyumluluğu
+
+Codex ilk koordinat çağrısında; MiMo destekli turunda ise özellikle root `oneOf` kullanan stil çağrılarında sayı/dizi alanlarını metin gönderdi. İç şema JSON Schema2020-12 olarak geçerliydi; istemcilerde daha basit tip sunumu gerekti. `src/client-schema.ts` yalnız keşif şemasını uyumlu hale getirir: aynı türden numeric tuple→sabit uzunluklu items array; nesne varyantları→türleri açık ortak/opsiyonel alanlar ve discriminator açıklaması. İç `toolSchemas` ve native katı doğrulama korunur; metin sayı/diziye çevrilmez, başka varyantın alanı kabul edilmez. SDK StandardSchema validate aynı orijinal şemayı çağırır; ilan edilen opsiyonel alanlar çalışma zamanı sözleşmesini gevşetmez.
+
+Yeni iki testle `npm test` **35/35**. Resmî SDK stdio testinde gerçek yayımlanan şemanın integer/number/array alanları okundu; eksik font ve stringified nokta isteği backend çağrı sayısını artırmadan isError döndü. Son sunucuyla native11paket **338/338**: `tmp/phase5-regressions/5447bc1b-086a-4b7b-8ab6-fc0e05c4437f/results.json`; plotting34 ve güncel gerçekPDF konum kanıtı `runtime/exports/phase5-640a9485-f08d-48cb-a808-0182946ba0ac/pdf-paper-positions.json`. Native ARX hash a48ea... değişmedi; değişen TypeScript sunucusudur. Katalog52 araç/3 resource yeniden üretildi.
+
+Aynı EVREN MiMo ile yeni şemada ayrı gerçek kontrol: `tmp/bracket-benchmarks/0db617c4-92a2-40b8-9a83-32744ec88125/evren-mimo/summary.json`.61.9sn,4 başarılı model MCP çağrısı: status/document_info/create_style/list_styles. Model epoch1/revision0/dashes[3,-1.5] değerlerini gerçek sayı/dizi gönderdi; yönetici native geri okumada MIMO_SCHEMA_HIDDEN patternLength4.5 ve aynı dashes değerini doğruladı. Bu kontrol yeni sunucu tip uyumudur; bütün modellerin bütün52 aracı veya tam braket çizimini yeni metadata ile tekrar yaptığı iddia edilmez. Ana MiMo çizim turu önceki metadata ile başlamıştı; sonuçlar karıştırılmaz.
+
+### Nihai çizim sonuçları
+
+`runtime/exports/uc-gorunus-2026-10-19/SONUCLAR.md` ve [karşılaştırma](UC_GORUNUS_KARSILASTIRMASI.md) tam sonucu içerir. Her model adlı son DWG yeni AutoCAD sürecinde MCP ile tekrar okundu, teslim byte hash'leri native-review hash'leriyle eşleşti. Codex max73 nesne/11 gerçek ölçü: görünüşler seçtiği60-teğet/toplam75 yorumunda tutarlı, fakat üçüncü açı sembolü ters. MiMo59/8: bağımsız ilk tur0 geometri, koordinat destekli ikinci turda ölçüler tutarlı; HIDDEN/CENTER Continuous kaldı. Paftalı son kayıt teslim edildi, ilk kayıt saklandı. Pro53/10: toplam36mm, ön nervür/delik merkezinde5mm uyuşmazlık ve arka düz kapak hatası. Üçünde antet doludur; bu kontrol alanına mühendislik onayı verildiği anlamına gelmez. Hiçbiri koşullu tam doğruluk kabulünden geçmedi; commit/push yapılmadı.
+
+## 11. Faz 6 — Windows özel ZIP ve kurulum yaşam döngüsü
+
+2026-10-19. Kullanıcı modelin yanlış teknik resim kararlarını MCP araç kabulünden ayırıp yeni çizim doğruluğu skill'ini sonraya bıraktı; Faz6'ya geçilmesini istedi. Windows/ortak geliştirme yönetici tarafından yapıldı; bu aşamada başka model veya ücretli API çağrısı yoktur. Mac ve kişisel istemci/AutoCAD ayarlarına dokunulmadı. Commit/push/yayın yapılmadı.
+
+**Yerel aday:** `runtime/packages/windows-0.1.0-preview-3.zip`,38.573.869 byte (yaklaşık36.8MiB). Paket kimliği `cf374016147ee2fc6000a7bd59eef88c360a66bd0f684ba673d550be008adee4`; ZIP SHA256 `d5fcbf771b1b294210fd0d2c9cdce9ba9a253951be72599a50d44eaaba0ed38c`.968 manifest dosyası: Node24.19.0 x64/tam lisans, üç üretim npm bağımlılığı ve lisansları, nlohmann/json3.12.0 gömülü bileşenlerin MIT bildirimleri, normal ARX, derlenmiş sunucu ve mevcut skill bundle'ı. SDK/host DLL, derleyici/npm geliştirme araçları, pairing ve çizim yoktur. ZIP Windows'un yerleşik tar aracıyla oluşturulur; PowerShell yürütme politikası değiştirilmez.
+
+Native `build/phase6-native/Release/AutocadMcp.arx`, OFF; SHA256 `8be0b6a7568d8d4f81c6b8f3fd903ff6eb5493853945bcec41aabdb732f0ae7a`. Kaynak/test-bayrağı kimliği `636f0c08a6398cafd314e6102b8998b7edbc164241dcece4e7ff916255c8f933`. CMake post-build kaydı native hash/kimlik/bayrağı bağlar. Kurulu sunucu pairing ve IPC el sıkışmasında bu kimliği zorunlu tutar; farklı/kimliksiz native için `VERSION_MISMATCH`, CAD isteği gönderilmeden ret. Kaynak geliştirme sunucusunun tarihî sürüm desteği bununla karıştırılmaz. Ortam değişkeni verilmezse native runtime `%LOCALAPPDATA%/AutocadMCP/runtime` kullanır; pairing oturumunun özel ACL'si korunur.
+
+| Kontrol | Sonuç | Kanıt |
+|---|---|---|
+| Ortak şema/IPC ve yeni kurulum yaşam döngüsü | **42/42** | `npm test`, normal kullanıcı izinleriyle; `test/distribution.test.ts` dahil |
+| Güncel native ile 11 CAD paketi | **338/338** | `tmp/phase5-regressions/9734982b-bcec-452b-918f-3634960a9ba0/results.json`;20 CRX kopyasının hash'i yeni ARX ile eşleşti |
+| Gerçek ZIP'ten yerel kurulum ve native kullanım | **28/28** | `tmp/installation-runs/5d83326a-7831-47bd-99d5-c31d51690e0e/results.json` |
+| Tip ve C++ çekirdek | Geçti | `npm run check`, `ctest --test-dir build/phase6-native -C Release --output-on-failure`,1/1 |
+| Native ARX dijital imza | **NotSigned** | `check-windows-release.mjs` ve doğrudan `Get-AuthenticodeSignature` |
+| Paket içi Node dijital imza | **Valid** | Aynı salt okunur imza kontrolü |
+| Genel yayın kapısı | **Reddedildi; beklenen sonuç** | Native imza, proje lisansı, public kanal yetkisi ve ayrı temiz cihaz kabulü yok |
+
+Teslimin kısa makinece okunur kanıtları `runtime/packages/windows-0.1.0-preview-3.acceptance.json` ve `.release-check.json` içindedir; ZIP/yan SHA256 ve bu dosyalar yerel/gitignored kalır.
+
+28 kontrollü paket kabulü: ZIP SHA/gerçek açılımı ve paket kimliği; derleyici/SDK istemcisinin yokluğu; gerçek CLI kurulum/tekrar kurulum, aynı ikililerle sentetik ikinci paket, önceki sürümün korunması, gerçek geri alma, boşluk/Türkçe karakterli yollar; açık Core Console varken kurulum reddi; kendi LOCALAPPDATA dizininde native fallback; kurulu Node ile PATH'te Node/npm olmadan gerçek MCP; üç istemci config/skill ve üç resource; gerçek native daire, mm ile geri okuma, ayrı DWG kaydı ve taze AutoCAD'de yeniden açma; kaynak/çıktı hash korunumu; gerçek kaldırma ve kullanıcı dosyalarının korunumu. Kaldırma dosya silmek yerine yönetilen bundle'ı arşivler. Model çizim karşılaştırması bu test değildir.
+
+Ortak testlerde bozuk/eksik/ek dosya, test bayrağı, path traversal/ADS/rezerve ad, junction, yönetilmeyen bundle, eşzamanlı kurulum kilidi ve farklı native kimliği retleri vardır. Kesinti senaryolarında gerçek dosya/kayıt durumları hazırlanır: değiştirmeden önce, iki rename arası, yeni sürüm aktif olduktan sonra, receipt sonrası ve kaldırma ortası. Kurtarma eskiyi geri getirir veya tam yerleşmiş yeniyi tamamlar; canlı kilidi aşmaz, ölü ve tanınmış kilidi arşivler. Bunlar işletim sistemi güç kesme/VM reset deneyleri değildir. Sandbox atomic rename/junction EPERM normal kullanıcı izniyle aşıldı; ACL gevşetilmedi.
+
+**Açık kapılar:** Ayrı geliştirici araçsız Windows makine/VM, AutoCAD otomatik bundle yükleme ve güven ekranı/SmartScreen, güvenilir native imzalama sertifikası, SDK dağıtım koşullarının incelemesi, proje lisansı ve genel yayın kararı **çalıştırılmadı/tamamlanmadı**. Testte paket ARX'i özel Core Console profiline açıkça yüklenir; bundle autoload kabulü iddia edilmez. Claude canlı modeli, Mac ve güncel native'de tam masaüstü fault suite çalıştırılmadı. Faz6 bütünü tamamlandı veya genel yayın hazır denmez. [Kurulum](WINDOWS_KURULUM.md), [yeniden üretme](GELISTIRME.md#faz-6--windows-özel-paket), [yayın kuralları](RELEASING.md).
+
+## 12. Faz 6 — durum uygulaması, sistem tepsisi ve yeniden bağlantı
+
+2026-10-19. Kullanıcının açık isteğiyle yönetici kendisi uyguladı. Windows Win32 durum/tepsi uygulaması ve paket içi Node denetleyicisi; kullanıcıya ait global AI/AutoCAD ayarı değiştirilmez. Oturum açılışında `--tray` başlama seçeneği varsayılan kapalıdır. Pencereyi kapatma/küçültme tepsiye gizler; tam çıkış denetleyiciyi ve seçili bağlantıyı kapatır, AutoCAD'i kapatmaz. Birden çok AutoCAD'de açık seçim gerekir. Aynı MCP stdio transportu yeni binding'i okur; önceki belge/instance kimliği veya kuyruktaki eski mutasyon yeni çizime yönlendirilmez. Üç istemci çalışma klasörü mevcut skill'lerle bir kez üretilir; son klasör yolu hatırlanır.
+
+Native eklenti açılışta yalnız auth/özelACL korumalı `desktop_get_status` / `desktop_start` yönetim kanalını açar. CAD köprüsü açık **Bağlan** seçimiyle UI thread'inde hazırlanır.52 MCP CAD aracı ve3 sabit resource değişmedi. Yönetim kanalı ömrü dolmadan yenilenir; CAD pairing ömrü dolduğunda yenileme açık bağlantı seçimiyle yapılır.24 saatlik gerçek bekleme testi **çalıştırılmadı**. Yeni genel teknik resim doğruluğu skill'i hâlâ ertelendi.
+
+**Güncel yerel aday:** `runtime/packages/windows-0.1.0-preview-6-desktop.zip`,38.683.117 byte. ZIP SHA256 `a5e0cfc5dd107e2f723bef657bff907017ded28b17174bc6f7cd41a2f5c90799`; paket kimliği `083f4caab98617574af017e6fc5908f095d040ef7d72a119cd958dbc9a5f6a57`,971 manifest dosyası. Yeni ARX SHA256 `76c345617722dd7f1a6f5d82039c4fe70e2b6fcd32d0b994ad23825ff81a77b9`, nativeBuildId `6fe07e7ec6d65fde3ab9e7de60e2eccbee19e34bf20ef00381b2eddfe5fcf0ec`. Desktop EXE SHA256 `5792c791c053348ad1f887825c31e6181a8aa29ddcae3bee7063453bf2b600b7`. §11 önceki preview3'ün tarihçesidir; güncel kanıt aşağıdadır.
+
+| Kontrol | Sonuç | Kanıt |
+|---|---|---|
+| Ortak test / tip |46/46, tip kontrolü geçti | `npm test`, `npm run check`; aynı MCP transportuyla reconnect, kuyruk retleri, workspace sahipliği/eksik config, controller kilidi dahil |
+| C++ çekirdek + Windows adaptörü | CTest2/2 | `desktop_platform_test`:8 gerçek sentetik registry kontrolü; gerçek Windows Run kaydı etkinleştirilmedi |
+| Yeni native ile tüm11 CAD paketi |338/338 | `tmp/phase5-regressions/0b31e2f8-8887-4898-a2b2-7ac534f023c5/results.json` |
+| Gerçek AutoCAD yeniden başlatma/çoklu seçim |23/23 | `tmp/desktop-runs/ffe6aedb-c285-485f-a06c-2b0aaf3c6fb8/results.json`;3 yeni Core Console oturumu, yeni kimlikler, native geometri/kayıt, kaynak korunumu |
+| Son ZIP'ten kurulum yaşam döngüsü ve native MCP |28/28 | `tmp/installation-runs/7f1da416-ab4b-426c-bed4-bde4d3b14080/results.json`; özel plugins kökü, PATH'te Node/npm olmadan paket içi runtime |
+| Görünür GUI ile gerçek bağlantı | Geçti | `tmp/desktop-ui-runs/fbc85229-4ed5-4b37-8165-afb8c4d878c2/results.json`, `connected.jpg`; sky ile Bağlan düğmesi,1 çizim/52 araç ve1 resmî SDK MCP istemcisi görüldü; kaynak hash korundu |
+| Pencere/yeniden açılış/bakım | Görüldü | Aynı GUI: küçültmede görünür pencerelerden kayboldu; yeniden başlatma aynı pencereyi getirdi, bağlantı korundu. Tam çıkışta process bitti, controller.lock yok/lastSeenAt1. Taze açılışta seçilen test workspace geri geldi. GUI açıkken setup recover işlem öncesi reddedildi |
+| İmzalar/yayın | Node Valid; ARX ve Desktop NotSigned; kapı kapalı | `runtime/packages/windows-0.1.0-preview-6-desktop.release-check.json`; lisans/clean-machine/public kanal kapıları da geçmedi |
+
+Görsel testte Codex/Claude/OpenCode dosyaları yeni proje içi test klasörüne arayüzden üretildi. Gerçek Windows başlangıç kaydı ve gerçek Başlat kısayolu geliştirme kabulünde yazılmadı. Oturum açılışında pencere göstermeme kodu/sentetik kayıt komutu mevcut; **gerçek reboot, Explorer yeniden başlatma, tepsi sağ tık menüsünün tıklanması ve temiz cihaz autoload/güven ekranı çalıştırılmadı**. Native testte ARX özel Core Console profiline açıkça yüklenir; otomatik bundle kabulü sayılmaz. İmzalama, proje lisansı/SDK dağıtım incelemesi ve ayrı temiz cihaz kabulü genel yayın öncesi açıktır. Mac/Claude canlı model/tam masaüstü fault suite ayrıca açık. Model çağrısı/harcama, commit/push veya genel yayın yapılmadı.
+
+Son incelemede eski/boş native oturum klasörleri ilk64 keşif girişini doldurup yeni hostu gizleyebiliyordu. Keşif artık önce mevcut descriptor dosyalarını bulur, en yenileri öne alır ve canlı prob sayısını64 ile sınırlar.150 eski host/istemci kalıntısı içeren regresyon eklendi; ölü MCP kayıtları yeni canlı istemci sayımını gizlemez. Preview6 yeni46/46 ortak ve23/23 gerçek desktop kabulünden geçti. Görünür GUI kabulü preview5 üzerinde yapıldı; preview6 ile EXE/ARX/Node byte hash'leri aynıdır. İki paket arasında yalnız desktop-agent.js ve desktop-state.js değişti. Güncel ZIP kurulum kabulü yukarıdaki yeni paket kimliğine aittir.
+
+## 13. Faz 6 — Windows arayüz düzenlemesi
+
+2026-10-19. Kullanıcının mevcut ekranı düzeltme talebi aynı yönetici tarafından uygulandı. `desktop/view.hpp` ve `desktop/main.cpp`: Bağlantı / İstemciler / Ayarlar sekmeleri, durum kartı, tek belirgin bağlantı düğmesi, istemci kartları ve açık klasör eylemleri. Boş AutoCAD listesi açıklamalı bekleme alanına dönüştü; ilk kurulum ve başlangıç kutusu ana ekranı doldurmaz. Yerel Win32 + işletim sisteminin GDI+ çizimi; yeni web/.NET çalışma zamanı yok. Native kontrollerin klavye odağı korunur, seçili sekme erişilebilir adıyla belirtilir; periyodik güncelleme giriş odağını veya oturum seçimini sıfırlamaz. Tepsi ve açık hedef seçimi korunur. Enter ile özel varsayılan düğme ataması yok; Tab/Shift+Tab ve Space ile düğme kullanımı görüldü.
+
+**Yeni aday:** `runtime/packages/windows-0.1.0-preview-7-desktop.zip`,38.696.743byte, SHA256 `e7fb72776476d5058ef1aa0deeb80ffc0591d236cb08fcf27458f80316218e08`; paketID `b6523d214a0151ed1178deba68108137725cecab3f0e329406fd0cef9e4e1e40`. Desktop EXE SHA256 `56bf463e0856fbb5db419e13dfa0f685c7ddf422d73bbf5c662d90d07c7076fc`. Preview6 ile manifest dosyaları karşılaştırıldı: değişen tek bundle dosyası `Contents/desktop/AutocadMcpDesktop.exe`. ARX, sunucu, Node ve installer hash'leri aynı; §12'nin46/338/23/28 sonuçları aynı alt bileşenlerin önceki kabulüdür, yeni GUI'nin kapsamlı temiz cihaz kabulü sayılmaz.
+
+Son EXE derlendi; CTest2/2 geçti. Gerçek yeni Core Console ve resmî MCP SDK istemcisiyle GUI'de **AutoCAD'e bağlan**,1 çizim/52 araç ve1 AI istemcisi görüldü. Kaynak byte hash'i korundu: `tmp/desktop-ui-runs/19594ff7-b1f2-4d30-b8ac-ca62335cbcd3/results.json`; `connected.jpg`, `clients.jpg`, `settings.jpg` görsel kanıttır. Üç sekme tıklanarak açıldı; yeni test workspace'ine üç istemci config/skill arayüzden üretildi, mevcut klasörde tekrar hazırlama dosyaları değiştirmeden tamamlandı. Giriş odağı birden fazla poll boyunca korundu. Ayarlar'daki başlangıç kutusu kapalı kaldı; gerçek Run kaydı değiştirilmedi. **Tepsiye gizle** ile pencere görünür listeden kayboldu ve tekrar açmada aynı pencere geri geldi.
+
+Önceki geliştirici penceresi tamamen kapatılıp yeni paket açıldı. Kaynak CAD test süreci kapandı; yeni GUI kullanıcı incelemesi için açık bırakıldı. Model çağrısı, commit/push, Mac veya yayın yapılmadı. ARX/EXE imzasız; Node Valid. Gerçek reboot, farklı DPI/ekran okuyucu, tepsi sağ tık menüsü ve temiz Windows autoload/kısayol kabulü çalıştırılmadı. UI dışındaki önceki açık Faz6 kapıları sürer.
+
+## 14. Faz 6 — kurulum rehberi ve kırmızı kimlik
+
+2026-10-20. Kullanıcının basit bağlantı adımları, kırmızı logo ve tasarım iyileştirmesi isteği yönetici tarafından uygulandı. `desktop/guide.hpp`: AutoCAD için dört adım, APPLOAD yardım metni ve eklenti klasörünü açma; Codex masaüstü/IDE veya diğer STDIO istemcileri için komut ve dört ayrı argüman alanı/kopyalama; Codex CLI, Claude Code ve OpenCode1.x için ayrı dört proje adımı. İstemcilerin kişisel ayarlarına otomatik yazılmaz. Claude Desktop ile Claude Code aynı bağlantı yolu gibi gösterilmez; yeni OpenCode2.x desteği iddia edilmez. İstemci adımları resmî belgelerle karşılaştırıldı; kaynak bağlantılar Windows kurulum rehberindedir.
+
+`desktop/assets/autocad-mcp-logo.png` kullanıcının isteğiyle yerleşik imagegen aracında üretildi; özgün kırmızı A/köprü simgesidir, resmî Autodesk logosu değildir. Prompt ve kaynak açıklaması `desktop/assets/README.md` içindedir. Build-time GDI+ dönüştürücü şeffaf köşeyi doğrular; 16/24/32/48/64/128/256px ICO ve256px PNG üretir. Logo EXE kaynağına gömülür, başlıkta/ana kartta/tepside kullanılır; tepside ayrı durum noktası korunur. Dönüştürücü son kullanıcı paketine girmez. Imagegen haricinde model çağrısı yapılmadı; repo içeriği gönderilmedi.
+
+**Son yerel aday:** `runtime/packages/windows-0.1.0-preview-10-desktop.zip`,38.751.884byte. SHA256 `696300d8daa1738835545525f346599a19a4c14cc2f833ec2ed1af01ee028985`; paketID `ad84d00f518885de3c68d71254d833ce5125ccd67ff14ffaa333fcebdc040147`,971 manifest dosyası. EXE SHA256 `2fd723f3ce7f6a90d8b899b1a01ada6ea5f2728977048aede54e98ee03ff3f52`. Preview7 manifestiyle karşılaştırmada değişen tek bundle dosyası `Contents/desktop/AutocadMcpDesktop.exe`; paket dışındaki Windows kullanım rehberi de yenilendi. ARX/server/Node/installer byte olarak aynıdır.
+
+| Kontrol | Sonuç / kanıt |
+|---|---|
+| Son kaynak derlemesi ve C++ testleri | Derlendi; CTest2/2. Sandbox tekrarında registry testi0xc0000409 verdi; normal kullanıcı izinli tekrar2/2 geçti. Gerçek Run ayarı değiştirilmedi |
+| Logo ve rehber görünümü | Son preview10 EXE ile kırmızı logo/tema, AutoCAD dört adımı ve manuel MCP üç adımı görüldü; `tmp/desktop-guide-runs/2026-10-20-final/` ekranları |
+| İstemci seçimi | Liste birden fazla2.5sn durum yenilemesinde açık kaldı; Claude Code seçilince doğru dört adım ve claude komutu görüldü. Poll sırasında aynı geometriyle MoveWindow çağrılması düzeltildi |
+| Komut panosu | Komutu kopyala başarı bildirimi görüldü; uygulamanın geçici metin alanına yapıştırılan değer paket içi node.exe yoluyla eşleşti. Eski çalışma klasörü geri kondu, yapılandırma üretilmedi |
+| Argümanlar | Dört satırın ekranda görünümü ve kaynak sırası doğrulandı. Argüman panosu için ayrı yapıştırma turu çalıştırılmadı |
+| Paket doğrulama | ZIP SHA256 ve boyutu yeniden okundu; manifest/provenance kontrolü geçti; Node Valid, ARX/EXE NotSigned, genel yayın kapısı beklenen şekilde kapalı |
+
+Makinece okunur sonuç `runtime/packages/windows-0.1.0-preview-10-desktop.acceptance.json`, görsel gözlem kaydı `tmp/desktop-guide-runs/2026-10-20-final/ui-observations.json`. Önceki46 ortak/338 native/23 desktop/28 kurulum sonuçları değişmeyen bileşenlerin önceki kabulüdür; son ZIP için tekrar çalıştırılmış gibi sunulmaz. Bu turda yeni canlı CAD/model bağlantısı, eklenti klasörü düğmesi tıklaması, gerçek reboot, farklı DPI/ekran okuyucu, temiz Windows veya Mac testi **çalıştırılmadı**. Yeni paket kullanıcı incelemesi için açık bırakıldı; commit/push/yayın yok. Faz6'nın önceki açık kapıları sürer.
+
+## 15. v1.0.0 — public Windows önizlemesi
+
+2026-10-20. Kullanıcı bütün değişikliklerin commit/push'unu, public repo, MorseCore düzeninde yalnız İngilizce/Türkçe README, Apache-2.0 ve v1.0.0 Release istedi. Kullanılabilir özel anahtarlı kod imzalama sertifikası yerel kullanıcı/makine depolarında bulunamadı. Son yönlendirme MorseCore yöntemi oldu; MorseCore Windows belgelerinde imzasız önizleme dağıtımı doğrulandı. Bu sürüm aynı açık sınırlamalarla `public-preview` olarak hazırlanır; sıkı imzalı/temiz cihaz kabulü geçti denmez. [Yayın profili](RELEASING.md).
+
+**Paket:** `Autocad-MCP-1.0.0-Windows-x64.zip`,38.756.853byte. SHA256 `5430e17859c141c964ef0667292539cec6054573d58a8740c09c6f2e0dad4ea1`; paketID `fc0de4878a1209b38db9fcec9cc189e4cdf24a4e41f8656f54dba39062954557`;973 dosya. Yeni nativeBuildId `fe26d3a4608b7add8a47d6bcee943666fce7bdd402eccf8f1937517505534a52`. Ürün/CMake/npm/MCP server sürümü1.0.0; mevcut wire protocol `bridgeVersion=0.1.0` korunur. LICENSE/NOTICE pakette zorunludur; kanal değiştirmek imza doğrulaması sayılmaz. Bilinmeyen kanal/lisans, eksik bildirim ve değiştirilmiş lisans dosyası ortak regresyonda reddedilir.
+
+| Yeni v1.0.0 kontrolü | Sonuç / kanıt |
+|---|---|
+| Tip/ortak/C++ | `npm run check`;47/47 ortak test; CTest2/2, gerçek Run ayarı değiştirilmedi |
+| Normal yeni ARX ile11 CAD paketi |338/338; `tmp/phase5-regressions/e523fe95-b81d-448f-bf9c-63a3612b810d/results.json` |
+| Gerçek ZIP kurulum/rollback/kaldırma/native-reopen |28/28; `tmp/installation-runs/f17ad7a0-7c5e-4b19-a7ee-d87c1e7cc43a/results.json` |
+| Yeni ARX ile gerçek restart/çoklu hedef |23/23; `tmp/desktop-runs/6cbba4d5-13f1-4caf-b3c0-54e6ffe9a925/results.json` |
+| İmza/lisans/manifest | Node Valid; ARX/EXE NotSigned. Apache-2.0, kanal ve manifest kapıları geçti. Sıkı kapı false; yalnız iki NotSigned ve ayrı temiz cihaz eksikliği var |
+| Sır/temizlik | Kaynak ve Git geçmişi bilinen anahtar/özel anahtar/bearer/kimlikli URL kalıplarıyla tarandı; bulgu yok. Görev/rapor/ajan standartları/durum kayıtları yerelde korunup public Git ağacından çıkarıldı; geçmiş yeniden yazılmadı |
+
+İlk kurulum turu açık bırakılan preview10 durum uygulaması nedeniyle bakım öncesi reddedildi: `tmp/installation-runs/d8523c28-679d-4d73-a0e8-735b4a96d236/`. GUI kendi **Tamamen kapat** düğmesiyle kapatıldı; yukarıdaki yeni tur geçti. Ret koruması kaldırılmadı. Paket kaynakları/örnek DWG byte'ları korundu.
+
+Ayrı temiz Windows/VM, gerçek reboot ve başlangıç kaydı, Explorer restart/tepsi sağ tık, ekran okuyucu/farklı DPI,24 saat credential yenilemesi, güncel tam masaüstü fault suite, canlı Claude ve Mac **çalıştırılmadı**. v1.0.0 numarası bu eksikleri tamamlanmış saymaz. Yayınlanan asset'in indirilen byte hash'i yayın betiğinde yeniden doğrulanır; gerçekleşen sonuç [yayın günlüğüne](releases/PUBLICATION_LOG.md) yazılır.

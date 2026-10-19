@@ -2,7 +2,7 @@
 
 > Durum: 2026-10-18. Faz 2 Windows/ortak prototipi uygulandı; gerçek Core Console kanıtları [kabul belgesinde](TEKNIK_DENEME_KABUL.md). Mac kullanıcı isteğiyle ayrı Faz M'ye taşındı; güncel fazlar Windows üzerinden ilerler. Bu plan gelecekteki fazlara, commit veya yayına izin vermez. Aşağıdaki genel ürün yönü ile sınanmış prototip alt kümesi ayrıdır.
 
-İlgili belgeler: [Kararlar](KARARLAR.md), [Yetenek matrisi](YETENEK_MATRISI.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md), [Ajan kuralları](../AGENTS.md).
+İlgili belgeler: [Kararlar](KARARLAR.md), [Yetenek matrisi](YETENEK_MATRISI.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md), [Geliştirme rehberi](GELISTIRME.md).
 
 ## 1. Amaç
 
@@ -250,15 +250,15 @@ MCP TypeScript SDK ve spesifikasyon sürümleri arasında farklar olabilir; sür
 
 - **Windows:** ObjectARX eklentisi ve bağımlılıkları, kurulum paketi, AutoCAD 2027 bundle/autoload, sürüm denetimi, imzalama, kaldırma.
 - **macOS:** Eklenti bundle'ı, kurulum paketi, notarization, imzalama, kaldırma. İlk test hedefi Apple Silicon/arm64; Intel ve universal paketler ayrıca değerlendirilecek.
-- **MCP sunucusu:** npm paketi veya paketlenmiş çalıştırılabilir; Node çalışma zamanı bağımlılığı, yapılandırma ve sürüm sabitleme açık karar.
+- **MCP sunucusu:** Windows özel ZIP adayı Node24 ikilisi, sabitlenmiş üretim bağımlılıkları ve mevcut skill bundle'ını birlikte taşır; kullanıcıda npm/derleyici/SDK gerekmez. npm/genel paket yayını yapılmaz.
 - **Uyumluluk:** Sunucu-eklenti protokol sürümü, AutoCAD 2027 sürüm aralığı ve işletim sistemi sürümleri matriste tutulur.
 - **Yükseltme/geri alma:** Eski eklentiyle yeni sunucu karışımı reddedilmeli; yükseltme ve kaldırma test edilmeli.
 - Otomatik güncelleme ilk sürümde varsayılan değil; ayrı karar.
-- Paketleme, imzalama ve dağıtım bu aşamada yapılmaz.
+- Faz6'da özel yerel paketleme uygulanır; sertifikalı imzalama, temiz cihaz kabulü ve genel dağıtım ayrı kapılardır. Mevcut özel aday genel yayın değildir.
 
 ## 12. Fazlar, çıktılar ve tamamlanma ölçütleri
 
-**Güncel konum:** 2A MCP/IPC çekirdeği ve 2B Windows ObjectARX prototipi yazıldı. 2D'de mm/metre/birimsiz, tek işlem UNDO, revision, dedup, ayrı DWG geometri geri okuma ve hash/dirty koruması Core Console'da geçti. Görünür masaüstünde test pompası olmadan 26 kontrol geçti: çoklu belge/context, UNDO, komut meşguliyeti, kilitli katman ve dosya/junction yarışları. Windows Faz 2 ve Faz 3 tamamlandı. Faz 3: ayrı status/iptal kanalı, kayıt bütçesi, eşzamanlı dedup, rollback/partial doğruluğu ve 56/56 gerçek masaüstü hata enjeksiyonu. Normal eklentiyle 30/30 regresyon geçti. Faz 4 Windows geliştirici pilotu Codex + OpenCode/EVREN MiMo ile tamamlandı: 80×40 mm, Ø10 kontur; oluşturma/taşıma/silme/sorgu/kayıt ve iki DWG reopen kabulü geçti. Claude config/skill hazır; kullanıcı limiti olmadığı için canlı Claude testi çalıştırılmadı. Ortak testler güncel 21/21. Eski 2C Mac paketi ayrı Faz M'dedir ve Windows'u bekletmez. Kullanıcı onayıyla tek kısa [durum kaydı](../FAZ2_DURUM.md) tutulur.
+**Güncel konum:** 2A MCP/IPC çekirdeği ve 2B Windows ObjectARX prototipi yazıldı. 2D'de mm/metre/birimsiz, tek işlem UNDO, revision, dedup, ayrı DWG geometri geri okuma ve hash/dirty koruması Core Console'da geçti. Görünür masaüstünde test pompası olmadan 26 kontrol geçti: çoklu belge/context, UNDO, komut meşguliyeti, kilitli katman ve dosya/junction yarışları. Windows Faz 2 ve Faz 3 tamamlandı. Faz 3: ayrı status/iptal kanalı, kayıt bütçesi, eşzamanlı dedup, rollback/partial doğruluğu ve 56/56 gerçek masaüstü hata enjeksiyonu. Normal eklentiyle 30/30 regresyon geçti. Faz 4 Windows geliştirici pilotu Codex + OpenCode/EVREN MiMo ile tamamlandı: 80×40 mm, Ø10 kontur; oluşturma/taşıma/silme/sorgu/kayıt ve iki DWG reopen kabulü geçti. Claude config/skill hazır; kullanıcı limiti olmadığı için canlı Claude testi çalıştırılmadı. Ortak testler güncel 21/21. Eski 2C Mac paketi ayrı Faz M'dedir ve Windows'u bekletmez. Kullanıcı onayıyla tek kısa [durum kaydı](TEKNIK_DENEME_KABUL.md) tutulur.
 
 1–6 numaralı fazlar güncel Windows hattıdır; mevcut numaralar korunur. Mac ayrı Faz M hattıdır; Windows fazlarının bitişine bağımlılık eklemez. Süre tahmini verilmez. Bir faz, yalnız belge yazıldığı için geliştirme/test açısından tamamlanmış sayılmaz.
 
@@ -268,8 +268,8 @@ MCP TypeScript SDK ve spesifikasyon sürümleri arasında farklar olabilir; sür
 | **2 — Çalışan ilk köprü** | AI → MCP → yerel eklenti → AutoCAD akışını kanıtlamak | TypeScript MCP çekirdeği; Windows eklentisi; belge okuma, çizgi/çember/kutu, taşıma ve geri okuma | Windows'ta sentetik çizim üzerinde gerçek ölçüler, doğru belge hedefi ve ayrı kayıt/UNDO senaryoları kanıtlı; Windows kabul kapıları çözülmüş | Windows temel kabulü tamamlandı: 69 Core Console + 26 masaüstü kontrolü |
 | **3 — Güvenilir çekirdek** | Mevcut çizimde güvenilir sorgu ve düzenleme | Yetki, revision/epoch, tekilleştirme, transaction/undo, iptal/zaman aşımı ve güvenli dosya çıktısı | Tekrar istek ikinci nesne üretmiyor; yanlış/eski hedefe yazmıyor; hata/kısmi etkiyi doğru bildiriyor; negatif senaryolar geçiyor | Tamamlandı: 56/56 gerçek masaüstü hata enjeksiyonu, 17/17 ortak, 1/1 C++, normal eklenti 30/30 regresyon |
 | **4 — İlk kullanılabilir sürüm (MVP)** | Kullanıcının AI istemcisinden temel işleri yapabilmesi | İlk 14 araç için doğrulanmış destek durumu, Windows pilot kurulumu, Claude/Codex bağlantı örnekleri ve kullanım belgesi | Yeni ve mevcut sentetik çizimde sorgu → oluşturma → düzenleme → ayrı kayıt akışı iki istemciyle Windows üzerinde kanıtlı; kurulum tekrarlanabilir | Tamamlandı: Codex + OpenCode gerçek pilotu, iki DWG reopen, üç istemci için config/skill ve rehber. Claude canlı testi çalıştırılmadı |
-| **5 — Özellikleri genişletme** | Geniş AutoCAD kapsamını modül modül geliştirmek | Gelişmiş 2B, katman/stil, blok/nitelik, açıklama, ileri 3B, layout/PDF, xref/veri ve isteğe bağlı otomasyon | Her modül kendi API/platform/geri okuma ve hata testlerini geçince açılıyor; desteklenmeyenler açık | Başlanmadı; artımlı geliştirme |
-| **6 — Kurulabilir ürün ve dağıtım** | Başkalarının kendi bilgisayarında kurabilmesi | Paketler, imzalama/notarization, istemci ayar rehberi, tanılama, yükseltme/kaldırma ve sürüm belgeleri | Geliştirici araçları olmayan temiz Windows'ta kurulum, kullanım, yükseltme ve kaldırma doğrulanmış; lisans ve yayın kararları kesinleşmiş | Başlanmadı |
+| **5 — Özellikleri genişletme** | Geniş AutoCAD kapsamını modül modül geliştirmek | Gelişmiş 2B, katman/stil, blok/nitelik, açıklama, ileri 3B, layout/PDF, xref/veri ve isteğe bağlı otomasyon | Her modül kendi API/platform/geri okuma ve hata testlerini geçince açılıyor; desteklenmeyenler açık | Windows ana paketleri uygulandı; ileri alt paketler açık |
+| **6 — Kurulabilir ürün ve dağıtım** | Başkalarının kendi bilgisayarında kurabilmesi | Paketler, imzalama/notarization, istemci ayar rehberi, tanılama, yükseltme/kaldırma ve sürüm belgeleri | Geliştirici araçları olmayan temiz Windows'ta kurulum, kullanım, yükseltme ve kaldırma doğrulanmış; lisans ve yayın kararları kesinleşmiş | Windows public önizleme: ZIP/tepsi/rehber/kurulum kabulü hazır; Apache-2.0 seçildi. Güvenilir imza, temiz cihaz ve gerçek reboot açık |
 | **M — macOS Apple Silicon** | Windows çekirdeğini Mac'e taşımak | ObjectARX arm64 eklentisi, Unix socket, Mac kabulü/pilot/paketleme | SDK/API farkları, gerçek AutoCAD işlemleri, doğru belge/UNDO/kopya ve Mac kurulum testleri bağımsız kanıtlı | Ayrı faz; kullanıcı ayrıca başlatacak, Windows'u engellemez |
 
 ### Faz 2'nin iş sırası ve kabul sınırı
@@ -284,13 +284,15 @@ MCP TypeScript SDK ve spesifikasyon sürümleri arasında farklar olabilir; sür
 - **3A:** sorgu/projeksiyon/sayfalama ve nesne referansları. **3B:** yetki, revision ve eşzamanlı tekilleştirme. **3C:** transaction/undo, iptal/timeout/unknown ve dosya yarışı testleri. Faz 2'deki temel önlemler burada kapsamlı hata enjeksiyonuyla sağlamlaştırılır.
 - **4A:** 14 aracın gerçek şemalarının [kataloğu](TOOL_CATALOG.json) ve destek listesi; katı girdiler, halen genel object çıktı şeması, alan/durum sözleşmesi ayrıca belgeli. **4B:** Kullanıcının Claude limitinin olmadığını belirtip OpenCode istemesi üzerine Codex + OpenCode/EVREN MiMo ile uçtan uca senaryolar geçti; Claude config/skill statik doğrulandı, canlı testi çalıştırılmadı. **4C:** Windows `pilot configure/doctor/pair`, Codex/Claude/OpenCode skill ve [kullanıcı rehberi](PILOT_KURULUM.md) hazır; Mac pilotu Faz M'de. Bu paketler son imzalı genel dağıtım yerine doğrulanmış geliştirici pilotudur.
 - **5A:** 2B + katman/stil + blok/nitelik + açıklama. **5B:** ileri katı/yüzey/mesh. **5C:** görünüm/layout/PDF + xref/veri. **5D:** ayrı yetkiyle otomasyon. Her paket bağımsız kapsam ve kabul ölçütüyle ele alınır; ham LISP erişimi "bütün özellikler tamam" sayılmaz.
-- **6A:** kurulum ve istemci yapılandırması. **6B:** Windows imzalama ve temiz cihaz testleri; Mac notarization Faz M'de. **6C:** yükseltme/kaldırma, lisans, destek matrisi ve yayın hazırlığı. Public depo, Release veya paket yayını yalnız kullanıcının açık talebiyle yapılır.
+- **6A:** kurulum, istemci yapılandırması ve Windows durum/tepsi uygulaması. AutoCAD ve MCP istemcisi ayrı durum göstergeleri; açık hedef seçimiyle yeniden bağlantı; kapatma/küçültmede tepside çalışma; varsayılan kapalı, isteğe bağlı oturum açılışında `--tray` başlangıcı. İstemci ayarı AutoCAD yeniden başladığında değişmez; eski belge kimliği yeni hedefe taşınmaz. **6B:** Windows imzalama ve temiz cihaz testleri; Mac notarization Faz M'de. **6C:** yükseltme/kaldırma, lisans, destek matrisi ve yayın hazırlığı. Public depo, Release veya paket yayını yalnız kullanıcının açık talebiyle yapılır.
+
+2026-10-19 kullanıcı kararıyla Faz6 başladı; yeni teknik resim doğruluğu skill'i ertelendi. Üç modelin geometri/ölçü/çizgi tipi kararları MCP'nin işlemleri uygulama kabulünden ayrı değerlendirilir; modelin yanlış çizimi kurulum paketini bekletmez. Windows dağıtımı [kurulum rehberi](WINDOWS_KURULUM.md), derleme/test komutları [geliştirme rehberi](GELISTIRME.md), yayın kapıları [yayın kuralları](RELEASING.md) içindedir. Faz5 ileri alt paketleri ve çizim skill'i tamamlandı sayılmaz. Bu 19Ekim kaydı tarihçedir;20Ekim public v1.0.0 talebi ve güncel yayın profili RELEASING.md içindedir.
 
 **Bağımlılık:** Windows çekirdek yolu 1 → 2 → 3 → 4'tür. Faz M bu hattın ön koşulu değildir; kullanıcı ayrıca başlattığında ortak çekirdeğin uygun sürümü üzerinden yürür. Faz 4 sonrası çekirdek ürün için Faz 6 yürütülebilir; Faz 5'in bütün ileri modüllerinin bitmesi ilk kurulabilir dağıtımı engellemez. Her yeni Faz 5 modülü aynı Faz 6 dağıtım kontrollerinden geçer.
 
 ### Faz 5 için önerilen uygulama sırası
 
-Kullanıcı bu aşamada yalnız sıradaki işleri açıklamamızı istedi; aşağıdaki sıra **plan önerisidir**, kodlama başlatma izni değildir. Windows 2027 hattı sürer; Mac Faz M'de, temiz cihaz/paketleme Faz 6'dadır.
+Kullanıcı daha sonra bu sıranın tamamını ve makine mühendisliği ihtiyaçlarının eklenmesini onaylayıp yöneticinin kendisinin uygulamaya başlamasını istedi. **Faz 5 Windows ana paketleri 52 araca ulaştı; ileri mekanik/yüzey/mesh alt paketleri açık.** Her satır kendi kabulü geçmeden tamamlandı sayılmaz. Makine mühendisliği alt paketleri [mekanik kapsamda](MAKINE_MUHENDISLIGI.md) ayrılır. Windows 2027 hattı sürer; Mac Faz M'de, temiz cihaz/paketleme Faz 6'dadır. Bu planlama anındaki yetki tarihçedir; güncel public v1.0.0 talebi RELEASING.md içindedir.
 
 | Sıra | Paket | Kullanıcıya kazandıracağı iş |
 |---|---|---|
@@ -305,7 +307,7 @@ Kullanıcı bu aşamada yalnız sıradaki işleri açıklamamızı istedi; aşa�
 
 **Kullanıcı açısından eşikler:** ilk gerçek AutoCAD işlemi Faz 2'de; temel günlük kullanım hedefi Faz 4'te; başkalarının temiz cihazda kurabileceği ürün Faz 6'dadır. Hiçbiri şu an tamamlanmış ürün desteği değildir.
 
-Ayrıntılı dayanaklar: [işlem/API envanteri](OZELLIK_ENVANTERI.md), [iletişim sözleşmesi taslağı](ILETISIM_SOZLESMESI.md), [kabul senaryoları](TEKNIK_DENEME_KABUL.md). Teknik test sonuçları bu mevcut belgelere işlenir; kullanıcının onayladığı tek kısa kayıt FAZ2_DURUM.md dosyasıdır.
+Ayrıntılı dayanaklar: [işlem/API envanteri](OZELLIK_ENVANTERI.md), [iletişim sözleşmesi taslağı](ILETISIM_SOZLESMESI.md), [kabul senaryoları](TEKNIK_DENEME_KABUL.md). Teknik test sonuçları bu mevcut belgelere işlenir; kişisel görev/ajan/durum kayıtları public Git ağacında tutulmaz.
 
 ## 13. Açık kararlar
 
@@ -341,6 +343,6 @@ Ayrıntılı dayanaklar: [işlem/API envanteri](OZELLIK_ENVANTERI.md), [iletişi
 - Model Context Protocol TypeScript SDK: <https://github.com/modelcontextprotocol/typescript-sdk>.
 - MCP spesifikasyon değişiklik günlüğü (2026-07-28): <https://modelcontextprotocol.io/specification/2026-07-28/changelog> — sürüm farklılıkları test gerektirir.
 - [Mevcut çözümler araştırması](arastirma/MEVCUT_COZUMLER_2026-10-18.md) — altı proje ve ek kaynaklar; canlı test yok.
-- [Ajan kuralları](../AGENTS.md) ve [standart](standart/README.md).
+- [Geliştirme rehberi](GELISTIRME.md) ve [katkı rehberi](GELISTIRME.md).
 
 İlk plan araştırma kaynaklarına dayanır. Faz 2 güncellemesi yerel kaynak kodu, sabitlenmiş bağımlılıklar, SDK başlıkları ve kabul belgesindeki gerçek komut sonuçlarına dayanır; bu sonuçlar Mac veya tam AutoCAD kapsamına genellenmez.

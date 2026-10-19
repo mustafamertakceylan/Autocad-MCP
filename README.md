@@ -1,20 +1,67 @@
+<div align="center">
+
+<img src="desktop/assets/autocad-mcp-logo.png" alt="Autocad MCP logo" width="144" />
+
 # Autocad MCP
 
-Her kullanıcının bilgisayarında çalışan AutoCAD–MCP köprüsü. Hedef tam AutoCAD 2027, Windows ve Mac Apple Silicon; yeni 2B/3B çizim ve mevcut çizimi inceleme/düzenleme. Depo **private**; kurulum paketi veya genel yayın yok.
+**Connect your AI assistant to AutoCAD. Draw, inspect and edit on your own computer.**
 
-**Durum: Windows Faz 2–4 sınırlı pilot kabulü tamamlandı.** Codex ve OpenCode/EVREN MiMo gerçek MCP üzerinden çizim, sorgu, düzenleme ve ayrı DWG kaydını kullandı; iki DWG yeniden açılarak 80×40 mm ve Ø10 profil doğrulandı. Codex/Claude/OpenCode için yerel bağlantı ve skill kurulumu var. Claude canlı testi limit olmadığı için **çalıştırılmadı**; dosyaları statik doğrulandı. Önceki Faz 3 kanıtı 56/56 masaüstü kontrolüdür. Mac ayrı **Faz M**; temiz cihaz kurulumu ve genel yayın Faz 6'dadır. [Kabul kanıtı](docs/TEKNIK_DENEME_KABUL.md).
+[![Download Windows](https://img.shields.io/badge/Download-Windows_x64-D92532?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases/download/v1.0.0/Autocad-MCP-1.0.0-Windows-x64.zip)
+[![v1.0.0](https://img.shields.io/badge/v1.0.0-Windows_preview-25262B?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases)
+[![Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-D92532?style=for-the-badge)](LICENSE)
 
-```text
-MCP istemcisi → yerel Node/TypeScript süreci (stdio)
-             → imzalı yerel Windows named pipe
-             → ObjectARX eklentisi → açık AutoCAD çizimi
-```
+**English** · [Türkçe](README.tr.md)
 
-Port veya köprüye ait LLM anahtarı gerekmez. İstemci MCP sürecini başlatır; eklentiyle eşleştirme yerel özel dosya üzerinden yapılır. AI istemcisinin buluta gönderdiği veriler ayrı veri akışıdır.
+[Windows setup](docs/WINDOWS_KURULUM.md) · [52 tools](docs/TOOL_CATALOG.json) · [Build from source](docs/GELISTIRME.md)
 
-## Başlangıç
+</div>
 
-Node 24+ ile proje klasöründe:
+Autocad MCP is an open-source bridge between full AutoCAD 2027 and Codex, Claude Code, OpenCode or other local STDIO MCP clients. The bridge runs on your computer: no central server, network port or bridge-specific API key is required. Model access and any data sent to a cloud model depend on your AI client's settings.
+
+![The desktop app explains AutoCAD setup in numbered steps](docs/media/setup-guide.jpg)
+
+**Current target: Windows x64 and full AutoCAD 2027.** AutoCAD LT is unsupported. Mac Apple Silicon is a separate development phase; no Mac package is available yet. The application UI is currently Turkish; the README is available in English and Turkish.
+
+**v1.0.0 is an unsigned Windows preview.** Windows/AutoCAD may show publisher or trust prompts. Separate clean-machine acceptance, real reboot/startup and trusted ARX/EXE signing remain unfinished. Review the [release notes](docs/releases/v1.0.0.md) and the SHA256 sidecar before use.
+
+### Get started
+
+1. Extract the released Windows ZIP and run **install.cmd** while AutoCAD is closed.
+2. Open a drawing in AutoCAD 2027. In **Autocad MCP**, select the session and click **AutoCAD'e bağlan** (connect to AutoCAD).
+3. Open **Kurulum rehberi → MCP'yi bağla** (setup guide → connect MCP) and select your client. For Codex desktop/IDE, copy the command and arguments. For CLI clients, prepare an empty workspace in **İstemciler** (clients).
+4. Ask your assistant: **“Check the AutoCAD connection status.”** The app shows the CAD connection and MCP client connection separately.
+
+If the plugin is missing from the session list, use **Eklenti klasörünü aç** (open plugin folder), then load `AutocadMcp.arx` with AutoCAD's `APPLOAD`. Review trust prompts yourself; the app does not change AutoCAD security settings.
+
+For later sessions, keep the same client configuration and connect the AutoCAD session again. Closing the window keeps the app in the system tray. **Windows ile başlat** (start with Windows) is optional and off by default; when enabled, it starts in the tray without forcing the window open.
+
+### What can you do?
+
+- Query drawings and entities; create, move, transform and edit 2D geometry.
+- Work with real dimensions, text, layers, linetypes, hatches and blocks/attributes.
+- Use solids, extrusion, revolution, booleans, drilling and mass properties with explicit density.
+- Create sections, BOM/tables, cameras, scaled layouts/PDFs and controlled xrefs.
+- Target an explicit drawing with unit/revision checks; save separate DWG copies and run supported operations in atomic batches.
+
+52 tools do not cover every AutoCAD feature. Surfaces/meshes, arbitrary AutoLISP/commands and remote HTTP access are outside the current scope. Check AI-generated dimensions and projections independently: a successful tool call is not engineering approval. See [support and limits](docs/YETENEK_MATRISI.md).
+
+### AI clients and skills
+
+| Client | Connection |
+|---|---|
+| Codex desktop / IDE | Local STDIO command and four separate arguments shown in the guide |
+| Codex CLI | Generated `codex` workspace and project MCP configuration |
+| Claude Code | Generated `claude/.mcp.json` and the existing skill |
+| OpenCode 1.x | Generated `opencode` workspace and local MCP configuration |
+| Other STDIO clients | Manual command/argument setup; compatibility needs client-specific verification |
+
+The existing `autocad-mcp` skill and three fixed MCP resources are included. A new general engineering-drawing accuracy skill is deferred. Claude Code configuration is prepared; a live Claude model has not been tested. These setup paths do not establish OpenCode2.x or Claude Desktop support.
+
+### Validation and development
+
+Dated Windows development evidence covers 47 common tests, 338 native CAD checks, 23 reconnect checks and 28 installation checks. The latest GUI guide, command copy and client selection were exercised; CTest passed 2/2. The [acceptance record](docs/TEKNIK_DENEME_KABUL.md) identifies which version each result belongs to and which checks were not run. These results do not replace separate clean Windows acceptance.
+
+Source development requires Node 24+, CMake, appropriate Visual Studio C++ tools and the separately licensed ObjectARX 2027 SDK:
 
 ```powershell
 npm ci --ignore-scripts
@@ -22,39 +69,10 @@ npm run check
 npm test
 ```
 
-Bu testler AutoCAD açmaz. Native derleme, izole gerçek test ve eşleştirme adımları: [geliştirme rehberi](docs/GELISTIRME.md).
+See the [developer guide](docs/GELISTIRME.md) for native builds, isolated AutoCAD testing and packaging. The end-user package bundles Node; users do not need the SDK or a compiler.
 
-Derleme ve AutoCAD'de `MCPSTART` sonrasında istemci/skill kurmak için [Windows pilot rehberini](docs/PILOT_KURULUM.md) izle. Yeni veya boş klasör zorunludur; kişisel istemci ayarlarının üzerine yazılmaz:
+### License and credits
 
-```powershell
-node dist/src/pilot.js configure --workspace "C:\CAD-Pilot" --grant-file "<mutlak pairing.json yolu>"
-node dist/src/pilot.js doctor --session-file "C:\CAD-Pilot\autocad-session.json"
-```
+[Apache 2.0](LICENSE) · [Notice](NOTICE) · [Third-party licenses](THIRD_PARTY_NOTICES.md) · [Release notes](CHANGELOG.md)
 
-## Şu anki alt küme
-
-- 14 sabit MCP aracı: keşif, durum/yetenek, belge bilgisi, sorgu/tek nesne, çizgi/çember/kutu, taşıma/silme, işlem durumu ve ayrı DWG kopyası.
-- WCS ve açık birim; instance/belge/epoch, revision, operationId ile tekrar istek kontrolü; geometri geri okuma.
-- Windows sentetik çiziminde tek işlem UNDO, fiziksel birim dönüşümü, hash/dirty koruması ve kopyayı yeniden açıp geometri karşılaştırması geçti.
-- Salt modelspace ve sınırlı nesne türleri; ileri AutoCAD özellikleri henüz uygulanmadı. Native Mac taşıması/eklenti derlemesi kapalı. Genel LISP/komut ve HTTP yok.
-
-## Belgeler
-
-| Belge | İçerik |
-|---|---|
-| [Geliştirme](docs/GELISTIRME.md) | Gereksinimler, derleme, test, eşleştirme ve mevcut sınırlar |
-| [Pilot kurulumu](docs/PILOT_KURULUM.md) | Codex/Claude/OpenCode bağlantısı, skill, kullanım ve yeniden eşleştirme |
-| [Araç kataloğu](docs/TOOL_CATALOG.json) | Gerçek 14 MCP aracının şemaları ve iki sabit skill resource |
-| [Kabul kanıtları](docs/TEKNIK_DENEME_KABUL.md) | Gerçek sonuçlar ve çalıştırılmayan kapılar |
-| [Plan](docs/PLAN.md) | Altı faz, bağımlılıklar ve tamamlanma ölçütleri |
-| [Kararlar](docs/KARARLAR.md) | Kullanıcı kararları ve prototip uygulama tercihleri |
-| [Yetenek matrisi](docs/YETENEK_MATRISI.md) | Platform/işlem düzeyinde gerçek destek sınırı |
-| [İletişim sözleşmesi](docs/ILETISIM_SOZLESMESI.md) | 14 araç ve 0.1.0 uygulama profili |
-| [İşlem envanteri](docs/OZELLIK_ENVANTERI.md) | 42 işlem için araştırma/API adayları |
-| [Kaynak notları](docs/arastirma/ASAMA1_KAYNAK_NOTLARI.md) | Resmî belgeler ve SDK düzeltmeleri |
-| [Mevcut çözümler](docs/arastirma/MEVCUT_COZUMLER_2026-10-18.md) | İlk araştırma |
-| [Kısa durum](FAZ2_DURUM.md) | Kullanıcı onaylı tek checkpoint |
-| [Ajan kuralları](AGENTS.md) | Yetki, çalışma ve yayın sınırları |
-| [Üçüncü taraf notları](THIRD_PARTY_NOTICES.md) | Bağımlılıklar ve lisans sınırları |
-
-Lisans henüz seçilmedi. Açık kaynak ürün yönü korunuyor; private depoyu public yapmak veya paket yayınlamak için ayrıca kullanıcı talebi gerekir.
+AutoCAD and ObjectARX are Autodesk products with separate licenses. This independent project is not affiliated with or endorsed by Autodesk; neither AutoCAD nor its SDK is included. The original application logo was generated with imagegen; see its [creation notes](desktop/assets/README.md).
