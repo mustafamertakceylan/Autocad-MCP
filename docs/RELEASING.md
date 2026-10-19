@@ -2,6 +2,16 @@
 
 2026-10-20 kullanıcı talebi: bütün değişiklikler commit/push edilir, depo public yapılır, kaynak kod Apache-2.0 lisanslanır ve v1.0.0 yayımlanır. Son yöntem talebi MorseCore'daki Windows yayını gibidir: **imzasız public önizleme**. Bu sürümde sertifika/ayrı temiz cihaz eksikleri açıkça yazılır; test edilmiş veya imzalanmış gibi gösterilmez. Önceki private-preview adayları tarihçedir. npm/Pages, sertifika/hesap satın alma veya Mac yayını yetkisi yoktur.
 
+## Sürüm numaraları
+
+Sürüm biçimi `MAJOR.MINOR.PATCH` olarak tutulur:
+
+- `1.0.0 → 1.0.1`: küçük hata düzeltmeleri ve bunlara eşlik eden test/bakım değişiklikleri.
+- `1.0.0 → 1.1.0`: geriye uyumlu yeni özellikler ve önemli geliştirmeler.
+- `1.0.0 → 2.0.0`: büyük yeni ürün sürümü veya uyumluluğu bozan değişiklikler.
+
+Yalnız belge veya test kanıtı kaydı için yeni ürün sürümü çıkarılmaz. Yeni sürümde hangi basamak artırılırsa sağındaki basamaklar sıfırlanır. Commit/push, ayrıca yeni release yayımlama yetkisi sayılmaz.
+
 ## v1.0.0 için açık imzasız önizleme istisnası
 
 - Kullanıcı MorseCore yöntemini istedi; oradaki README/Windows kurulum belgesi imzasız dağıtımı açıkça bildirir. Bu istisna yalnız `public-preview` kanalı ve açık `--profile unsigned-preview` yayın komutuyla uygulanır.

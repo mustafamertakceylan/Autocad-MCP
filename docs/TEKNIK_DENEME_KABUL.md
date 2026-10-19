@@ -371,3 +371,24 @@ Makinece okunur sonuç `runtime/packages/windows-0.1.0-preview-10-desktop.accept
 İlk kurulum turu açık bırakılan preview10 durum uygulaması nedeniyle bakım öncesi reddedildi: `tmp/installation-runs/d8523c28-679d-4d73-a0e8-735b4a96d236/`. GUI kendi **Tamamen kapat** düğmesiyle kapatıldı; yukarıdaki yeni tur geçti. Ret koruması kaldırılmadı. Paket kaynakları/örnek DWG byte'ları korundu.
 
 Ayrı temiz Windows/VM, gerçek reboot ve başlangıç kaydı, Explorer restart/tepsi sağ tık, ekran okuyucu/farklı DPI,24 saat credential yenilemesi, güncel tam masaüstü fault suite, canlı Claude ve Mac **çalıştırılmadı**. v1.0.0 numarası bu eksikleri tamamlanmış saymaz. Yayınlanan asset'in indirilen byte hash'i yayın betiğinde yeniden doğrulanır; gerçekleşen sonuç [yayın günlüğüne](releases/PUBLICATION_LOG.md) yazılır.
+
+## 16. Faz 6 — ek yerel Windows kabulü
+
+2026-10-20. Kullanıcı bu bilgisayarda kalan testlerin yönetici tarafından çalıştırılmasını ve bulunan hataların düzeltilmesini istedi. Aşağıdaki kontrollerde ürün hatası bulunmadı; ürün kaynakları ve yayımlanmış paket değiştirilmedi. Bu bölüm yeni kabul kaydıdır; önceki bölümün tarihli eksik listesi güncel test sonucu gibi okunmamalıdır.
+
+| Kontrol | Sonuç ve yerel kanıt |
+|---|---|
+| Güncel tam masaüstü hata senaryoları | **56/56**. Güncel kaynaklardan `AUTOCAD_MCP_TESTING=ON` ile ayrı ARX derlendi; gerçek AutoCAD 2027 masaüstünde sentetik çizim/profil ile çalıştırıldı. `tmp/desktop-runs/359b2b41-ea1d-4e1d-af9c-7090725c214a/phase3-results.json` |
+| İptal, timeout, dedup ve işlem sınırları | Kuyruk iptali, timeout sonrası uzlaşma, eşzamanlı yinelenen istek, anahtar çakışması, atomik grup ve işlem sonrası doğrulama geçti; aynı56 kontrolün parçalarıdır |
+| Hata ve protokol sınırları | Kayıt/reopen hataları, read-only/modal/veto, bozuk HMAC/JSON/UTF-8/frame, kapasite, yeniden başlatma ve belirsiz etki/karantina geçti; aynı56 kontrolün parçalarıdır |
+| Eklenti klasörü rehberi | Yayımlanan1.0.0 EXE'de düğme, paket içindeki `Contents/Win64` klasörünü ve `AutocadMcp.arx` dosyasını açtı; `tmp/phase6-ui-final/plugin-folder.jpg` |
+| MCP argümanlarını kopyala | Dört satır ayrı Not Defteri'ne yapıştırılıp kaydedildi; pilot yolu, `desktop-serve`, `--state-root` ve ekranda gösterilen durum yolu eşleşti. `tmp/phase6-ui-final/clipboard-check.json` |
+| Klavye ve yerleşim | Tab/Shift+Tab ile sekme odağı ve Space ile etkinleştirme geçti. Varsayılan ve tam ekran yerleşimi görsel incelendi; `tmp/phase6-ui-final/maximized.jpg`. Farklı DPI veya minimum boyut kabulü sayılmaz |
+| Penceresiz başlangıç ve tek oturum | Yeni sentetik köklerle `--tray`, yeni görünür pencere açmadan canlı yönetici başlattı. İkinci `--tray` çağrısı0 ile çıktı; aynı controller kimliği/PID korundu. Normal ikinci açılış aynı pencereyi gösterdi |
+| Gizleme ve kapatma | **Tepsiye gizle** ve pencerenin **X** düğmesi pencereyi gizledi; yönetici ve heartbeat sürdü. İkinci açılış geri getirdi. **Tamamen kapat**, yerel/Node süreçlerini ve kilidi temizleyip canlılık kaydını geçersizleştirdi |
+| Ani kapanmadan kurtarma | Yolu ve ebeveyni doğrulanan sentetik native süreç zorla kapatıldı; Job Object çocuk yöneticiyi sonlandırdı. Yeniden başlatma eski kilidi aşıp yeni controller kimliği/canlı heartbeat üretti. Kurtarılan oturum da kendi çıkış düğmesiyle temiz kapandı |
+| Süreç ve UI kanıtı | `tmp/phase6-process-d4d8d31b-4cf9-4208-9e07-f958b479ddc4/{started,duplicate,show,hide-reshow,graceful-exit,crash-recovery,window-close,final-cleanup}.json`; gözlem özeti `tmp/phase6-ui-final/observations.json` |
+
+UI testleri yayımlanmış normal1.0.0 EXE üzerinde yapıldı. Hata enjekte eden ARX yalnız `build/phase6-fault-tests` altında tutuldu; yayın paketine veya kullanıcı AutoCAD eklenti klasörüne taşınmadı. Mevcut normal ARX338/338, restart23/23 ve kurulum28/28 sonuçları önceki bölümdeki kabuldür; bu turda yeniden çalıştırılmış gibi sunulmaz. Kişisel Windows başlangıç kaydı, AutoCAD güvenlik ayarları ve global AI istemci ayarları değiştirilmedi. Yalnız testin oluşturduğu süreçler kapatıldı.
+
+**Açık kalan kabul:** Tepsi sağ tık menüsü otomasyon aracında taskbar hedefi bulunamadığından doğrulanamadı; minimum pencere boyutuna yönelik sürüklemeler boyutu değiştirmedi, kabul sayılmadı. Gerçek reboot/Windows başlangıcı/Explorer restart, farklı DPI/ekran okuyucu, ayrı temiz Windows/VM,24 saat credential yenileme beklemesi, güvenilir kod imzası, canlı Claude ve Mac çalıştırılmadı. Bu yerel kabul Faz6'nın bütün yayın/cihaz kapılarının kapandığı anlamına gelmez. Yalnız kabul belgeleri değiştiği için ürün sürümü1.0.0 korundu; yeni release üretilmedi.
