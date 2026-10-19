@@ -14,17 +14,18 @@ export async function cleanupFixture(folder: string): Promise<void> {
   await rm(actual, { recursive: true });
 }
 
-export async function mockPlugin(options: { wrongSignature?: boolean; hang?: boolean; control?: boolean; wrongVersion?: boolean } = {}) {
+export async function mockPlugin(options: { wrongSignature?: boolean; hang?: boolean; control?: boolean; wrongVersion?: boolean; nativeBuildId?: string; handshakeBuildId?: string } = {}) {
   const folder = await mkdtemp(join(tmpdir(), 'autocad-mcp-test-')); await chmod(folder, 0o700);
   const key = randomBytes(16).toString('hex');
   const grant: Grant = { bridgeVersion: '0.1.0', instanceId: 'mock-' + key, endpoint: process.platform === 'win32' ? `\\\\.\\pipe\\autocad-mcp-${key}` : join(folder, 'bridge.sock'), secret: randomBytes(32).toString('hex'), backend: 'mock', expiresAt: Date.now() + 60000, operations: toolNames };
   if (options.control) grant.controlEndpoint = grant.endpoint + '-control';
+  if (options.nativeBuildId) grant.nativeBuildId = options.nativeBuildId;
   const sockets = new Set<Socket>(); let calls = 0; let mutations = 0; let cancellations = 0;
   const records = new Map<string, { fingerprint: string; result: object }>();
   const accept = (socket: Socket, control = false) => {
     sockets.add(socket); socket.on('close', () => sockets.delete(socket)); socket.on('error', () => {});
     const nonce = randomBytes(32).toString('hex'); const frames = new FrameReader();
-    socket.write(JSON.stringify({ nonce, instanceId: grant.instanceId, bridgeVersion: options.wrongVersion ? '9.0.0' : '0.1.0' }) + '\n');
+    socket.write(JSON.stringify({ nonce, instanceId: grant.instanceId, bridgeVersion: options.wrongVersion ? '9.0.0' : '0.1.0', ...(options.nativeBuildId ? { nativeBuildId: options.handshakeBuildId ?? options.nativeBuildId } : {}) }) + '\n');
     socket.on('data', (chunk: Buffer) => {
       try {
         for (const line of frames.push(chunk)) {

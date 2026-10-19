@@ -8,10 +8,14 @@ import { mutating, type ToolName } from './tools.js';
 export const grantSchema = z.strictObject({
   bridgeVersion: z.literal(BRIDGE_VERSION), instanceId: z.string().min(1).max(128),
   endpoint: z.string().min(1).max(4096), controlEndpoint: z.string().min(1).max(4096).optional(), secret: z.string().regex(/^[a-f0-9]{64}$/),
-  backend: z.enum(['objectarx', 'mock']), expiresAt: z.number().int().positive(),
-  operations: z.array(z.string()).max(32)
+  backend: z.enum(['objectarx', 'mock']), expiresAt: z.number().int().positive(), nativeBuildId: z.string().regex(/^[a-f0-9]{64}$|^$/).optional(),
+  operations: z.array(z.string().min(1).max(128)).max(64)
 });
 export type Grant = z.infer<typeof grantSchema>;
+function requiredOperations(name:ToolName,params:Record<string,unknown>):string[] {
+  return name==='acad_run_batch'?[name,...((params.steps??[]) as Array<{tool:string}>).map(step=>step.tool)]:[name];
+}
+
 type PendingCall = {
   grant: Grant; name: ToolName; params: Record<string, unknown>; signal: AbortSignal | undefined;
   resolve: (result: Record<string, unknown>) => void; reject: (error: unknown) => void; abort: () => void;
@@ -39,7 +43,7 @@ export class BridgeClient {
   private active = false;
   private admitted = 0;
   private controls = 0;
-  constructor(private readonly grantFile?: string, private readonly timeoutMs = 10000, private readonly maxPending = 64) {
+  constructor(private readonly grantFile?: string, private readonly timeoutMs = 10000, private readonly maxPending = 64, private readonly expectedNativeBuildId?: string, private readonly beforeDispatch?: () => Promise<void>) {
     if (!Number.isSafeInteger(maxPending) || maxPending < 1 || maxPending > 1024) throw new Error('Invalid queue capacity');
   }
   async call(name: ToolName, params: Record<string, unknown>, signal?: AbortSignal): Promise<Record<string, unknown>> {
@@ -49,6 +53,7 @@ export class BridgeClient {
     if (status) this.controls++; else this.admitted++;
     try {
       if (signal?.aborted) throw new BridgeError('CANCELLED', 'Call cancelled before submission');
+      await this.beforeDispatch?.();
       if (!this.grantFile) {
         if (name === 'acad_list_instances') return { instances: [] };
         throw new BridgeError('IPC_UNAVAILABLE', 'No pairing file configured');
@@ -56,11 +61,12 @@ export class BridgeClient {
       let grant: Grant;
       try { grant = await readGrant(this.grantFile); }
       catch { throw new BridgeError('IPC_AUTH_FAILED', 'Pairing file unavailable or invalid'); }
+      if (this.expectedNativeBuildId && grant.nativeBuildId !== this.expectedNativeBuildId) throw new BridgeError('VERSION_MISMATCH', 'Installed server and AutoCAD plugin builds differ; restart and explicitly re-pair');
       if (name === 'acad_list_instances') return { instances: [{ instanceId: grant.instanceId, backend: grant.backend, connected: false, note: 'Paired; use status to verify liveness' }] };
       if (params.instanceId !== grant.instanceId) throw new BridgeError('INSTANCE_NOT_FOUND', 'Instance does not match pairing');
-      if (!grant.operations.includes(name)) throw new BridgeError('SECURITY_DENIED', 'Operation not granted');
+      if (!requiredOperations(name,params).every(operation=>grant.operations.includes(operation))) throw new BridgeError('SECURITY_DENIED', 'Operation not granted');
       if (signal?.aborted) throw new BridgeError('CANCELLED', 'Call cancelled before submission');
-      if (status && grant.controlEndpoint) return await this.rpc(grant, name, params, signal, true);
+      if (status && grant.controlEndpoint) { await this.beforeDispatch?.(); return await this.rpc(grant, name, params, signal, true); }
       return await new Promise<Record<string, unknown>>((resolveResult, reject) => {
         const entry: PendingCall = { grant, name, params, signal, resolve: resolveResult, reject, abort: () => {
           const index = this.queue.indexOf(entry);
@@ -87,11 +93,12 @@ export class BridgeClient {
 
   private async dispatch(entry: PendingCall): Promise<Record<string, unknown>> {
     if (entry.signal?.aborted) throw new BridgeError('CANCELLED', 'Call cancelled before sending');
+    await this.beforeDispatch?.();
     let current: Grant;
     try { current = await readGrant(this.grantFile!); }
     catch { throw new BridgeError('IPC_AUTH_FAILED', 'Pairing revoked, expired or unavailable'); }
-    if (current.instanceId !== entry.grant.instanceId || current.endpoint !== entry.grant.endpoint || current.controlEndpoint !== entry.grant.controlEndpoint || current.secret !== entry.grant.secret || current.backend !== entry.grant.backend) throw new BridgeError('IPC_AUTH_FAILED', 'Pairing changed while queued');
-    if (!current.operations.includes(entry.name)) throw new BridgeError('SECURITY_DENIED', 'Operation grant revoked while queued');
+    if (current.instanceId !== entry.grant.instanceId || current.endpoint !== entry.grant.endpoint || current.controlEndpoint !== entry.grant.controlEndpoint || current.secret !== entry.grant.secret || current.backend !== entry.grant.backend || current.nativeBuildId !== entry.grant.nativeBuildId) throw new BridgeError('IPC_AUTH_FAILED', 'Pairing changed while queued');
+    if (!requiredOperations(entry.name,entry.params).every(operation=>current.operations.includes(operation))) throw new BridgeError('SECURITY_DENIED', 'Operation grant revoked while queued');
     return this.rpc(current, entry.name, entry.params, entry.signal);
   }
 
@@ -125,9 +132,10 @@ export class BridgeClient {
         try {
           for (const line of frames.push(chunk)) {
             // Outer authenticated envelope has a bounded base64 string, not a drawing string.
-            const packet = z.strictObject({ nonce: z.string().regex(/^[a-f0-9]{64}$/), body: z.string().optional(), mac: z.string().optional(), instanceId: z.string().optional(), bridgeVersion: z.string().optional() }).parse(JSON.parse(line));
+            const packet = z.strictObject({ nonce: z.string().regex(/^[a-f0-9]{64}$/), body: z.string().optional(), mac: z.string().optional(), instanceId: z.string().optional(), bridgeVersion: z.string().optional(), nativeBuildId: z.string().optional() }).parse(JSON.parse(line));
             if (!sent) {
               if (packet.body || packet.mac || packet.instanceId !== grant.instanceId || packet.bridgeVersion !== BRIDGE_VERSION) throw new Error('Handshake');
+              if (this.expectedNativeBuildId && packet.nativeBuildId !== this.expectedNativeBuildId) return fail('VERSION_MISMATCH', 'AutoCAD plugin build differs from installed server');
               nonce = packet.nonce;
               const body = encodeBody({ jsonrpc: '2.0', id: 1, method: name, params });
               const request = JSON.stringify({ nonce, body, mac: sign(grant.secret, 'request', nonce, body) });

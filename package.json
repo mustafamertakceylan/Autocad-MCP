@@ -17,7 +17,8 @@
     "test:live:windows": "npm run build && node dist/test/live-windows.js",
     "start": "node dist/src/main.js",
     "pilot": "node dist/src/pilot.js",
-    "catalog": "npm run build && node dist/test/export-tool-catalog.js"
+    "catalog": "npm run build && node dist/test/export-tool-catalog.js",
+    "test:phase5:windows": "npm run build && node dist/test/phase5-regression.js"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.3.1",

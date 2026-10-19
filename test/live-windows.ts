@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { BridgeClient, readGrant } from '../src/bridge.js';
-import type { ToolName } from '../src/tools.js';
+import { toolNames, type ToolName } from '../src/tools.js';
 
 if (process.platform !== 'win32' || process.env.AUTOCAD_MCP_LIVE_TEST !== '1') throw new Error('Explicit Windows live-test opt-in required');
 const [autocadRoot, template, modulePath] = process.argv.slice(2);
@@ -24,7 +24,7 @@ const slash = (value: string) => resolve(value).replaceAll('\\', '/');
 const units = process.env.AUTOCAD_MCP_TEST_INSUNITS ?? '4';
 const undoTest = process.env.AUTOCAD_MCP_TEST_UNDO === '1' && units !== '0';
 if (!['0', '4', '6'].includes(units)) throw new Error('Test INSUNITS must be 0, 4 or 6');
-await writeFile(script, `(setvar "TRUSTEDPATHS" "${slash(dirname(modulePath))}")\n(setvar "INSUNITS" ${units})\n(arxload "${slash(modulePath)}")\nMCPSTART\nMCPPUMP\n${undoTest ? '_.UNDO\n1\nMCPPUMP\n' : ''}MCPSTOP\n_.QUIT\n_N\n`);
+await writeFile(script, `(setvar "TRUSTEDPATHS" "${slash(dirname(modulePath))}")\n(setvar "INSUNITS" ${units})\n(arxload "${slash(modulePath)}")\nMCPSTART\nMCPPUMP\n${undoTest ? '_.UNDO\n1\nMCPPUMP\n' : ''}MCPSTOP\n_.QUIT\n_Y\n`);
 const output = createWriteStream(join(root, 'autocad.log'));
 const child = spawn(join(autocadRoot, 'accoreconsole.exe'), ['/i', input, '/s', script, '/isolate', 'AutocadMcpPhase2', profile, '/l', 'en-US'], {
   cwd: root, windowsHide: true, env: { ...process.env, MCP_RUNTIME_DIR: runtimeRoot, MCP_TEST_MODE: '1' }, stdio: ['ignore', 'pipe', 'pipe']
@@ -56,10 +56,10 @@ try {
   };
   const status = await call('acad_get_status', { instanceId });
   check('real ObjectARX backend (not mock)', status.backend === 'objectarx' && status.simulation === false);
-  check('14 MCP tools available', (await client.listTools()).tools.length === 14);
+  check('current MCP tool catalog available', (await client.listTools()).tools.length === toolNames.length);
   check('paired instance listed without implicit target', (await call('acad_list_instances', {})).instances[0].instanceId === instanceId);
   const capabilities = await call('acad_get_capabilities', { instanceId });
-  check('native capability limits reported', capabilities.operations.length === 14 && capabilities.limits.maxTargets === 100 && capabilities.outputRoots[0].id === 'test-output');
+  check('native capability limits reported', capabilities.operations.length === toolNames.length && capabilities.limits.maxTargets === 100 && capabilities.outputRoots[0].id === 'test-output');
   const docs = await call('acad_list_documents', { instanceId });
   check('one isolated drawing open', docs.documents.length === 1);
   const doc = docs.documents[0]; const target = { instanceId, documentId: doc.documentId, documentEpoch: doc.documentEpoch };

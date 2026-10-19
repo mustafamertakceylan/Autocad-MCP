@@ -15,6 +15,24 @@ test('official SDK client exercises actual stdio process and paired IPC backend'
     await client.connect(transport);
     const list = await client.listTools();
     assert.deepEqual(list.tools.map(x => x.name).sort(), [...toolNames].sort());
+    const style = list.tools.find(x => x.name === 'acad_create_style')!.inputSchema as any;
+    assert.equal(style.properties.documentEpoch.type, 'integer');
+    assert.equal(style.properties.dashes.items.type, 'number');
+    assert.equal(style.oneOf, undefined);
+    const line = list.tools.find(x => x.name === 'acad_create_line')!.inputSchema as any;
+    assert.equal(line.properties.start.items.type, 'number');
+    const beforeInvalid = plugin.calls();
+    const invalidStyle = await client.callTool({ name: 'acad_create_style', arguments: {
+      instanceId: plugin.grant.instanceId, documentId: 'doc-1', documentEpoch: 1,
+      operationId: 'invalid-style', expectedRevision: 0, kind: 'text', name: 'FONT'
+    } });
+    assert.equal(invalidStyle.isError, true);
+    const invalidLine = await client.callTool({ name: 'acad_create_line', arguments: {
+      instanceId: plugin.grant.instanceId, documentId: 'doc-1', documentEpoch: 1,
+      operationId: 'invalid-line', expectedRevision: 0, coordinateSystem: 'WCS', lengthUnit: 'mm', start: '[0,0,0]', end: [1,0,0]
+    } });
+    assert.equal(invalidLine.isError, true);
+    assert.equal(plugin.calls(), beforeInvalid, 'Compatible advertisement cannot send invalid values to the backend');
     const status = await client.callTool({ name: 'acad_get_status', arguments: { instanceId: plugin.grant.instanceId } });
     assert.equal(status.isError, false);
     assert.equal((status.structuredContent as Record<string, unknown>).simulation, true);

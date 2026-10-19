@@ -8,14 +8,35 @@
 #include "dbapserv.h"
 #include "dbsymtb.h"
 #include "dbents.h"
+#include "dbdim.h"
+#include "dbmtext.h"
+#include "dbpl.h"
 #include "dbsol3d.h"
+#include "dbregion.h"
+#include "dbhatch.h"
+#include "dbtable.h"
+#include "dbfcf.h"
+#include "geplane.h"
+#include "dblayout.h"
+#include "AcDbLMgr.h"
+#include "dbplotsetval.h"
+#include "AcPlPlotEngine.h"
+#include "AcPlPlotFactory.h"
+#include "AcPlPlotInfo.h"
+#include "AcPlPlotInfoValidator.h"
+#include "acdbxref.h"
+#include "dbxutil.h"
+#include "dbRevolveOptions.h"
+#include "dbSweepOptions.h"
 #include "dbtrans.h"
 #include "dbobjptr.h"
+#include "dbidmap.h"
 #include "acutmem.h"
 #include "dbsymutl.h"
 #include "adscodes.h"
 #include <deque>
 #include <future>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <regex>
@@ -30,11 +51,11 @@ void need(bool value, const char *code = "VALIDATION_FAILED", const char *messag
     if (!value)
         throw Failure{code, message};
 }
-void cad(Acad::ErrorStatus status) {
+void cad(Acad::ErrorStatus status,const char *step=nullptr) {
     if (status == Acad::eLockViolation || status == Acad::eLockChangeInProgress ||
         status == Acad::eLockConflict || status == Acad::eVetoed)
         throw Failure{"DOC_BUSY", "Document lock is unavailable"};
-    need(status == Acad::eOk, "EXECUTION_FAILED", "AutoCAD API rejected operation");
+    if(status!=Acad::eOk)throw Failure{"EXECUTION_FAILED",std::string(step?step:"AutoCAD API rejected operation")+" (status "+std::to_string(static_cast<int>(status))+")"};
 }
 std::wstring wide(const std::string &value) {
     if (value.empty())
@@ -80,14 +101,18 @@ json xyz(const AcGePoint3d &p, double f = 1) {
 }
 bool mutation(const std::string &method) {
     return method == "acad_create_line" || method == "acad_create_circle" || method == "acad_create_box" ||
-           method == "acad_move_entities" || method == "acad_erase_entities" || method == "acad_save_copy";
+           method == "acad_move_entities" || method == "acad_erase_entities" || method == "acad_save_copy" ||
+           method == "acad_create_layer" || method == "acad_create_style" || method == "acad_create_text" ||
+           method == "acad_create_mtext" || method == "acad_create_dimension" ||
+           method == "acad_create_arc" || method == "acad_create_polyline" || method == "acad_transform_entities" ||
+           method=="acad_offset_entity" || method=="acad_edit_curve" || method=="acad_corner" ||
+           method=="acad_define_block" || method=="acad_insert_block" || method=="acad_set_attributes" || method=="acad_extrude" || method=="acad_revolve" || method=="acad_boolean" || method=="acad_section_solid" || method=="acad_create_hatch" || method=="acad_create_table" || method=="acad_drill_holes" || method=="acad_create_shaft" || method=="acad_create_feature_control_frame" || method=="acad_create_layout" || method=="acad_export_pdf" || method=="acad_attach_xref" || method=="acad_manage_xref" || method=="acad_run_batch" || method=="acad_set_view";
 }
 
 struct DocState {
     std::string id;
     std::uint64_t epoch = 0, revision = 0;
     bool writing = false;
-    std::set<std::string> boxes;
 };
 std::map<AcDbDatabase *, DocState> documents;
 std::uint64_t next_epoch = 1;
@@ -136,7 +161,7 @@ DocState &state(AcDbDatabase *db) {
 }
 
 std::unique_ptr<mcp::Runtime> runtime;
-std::filesystem::path output_root;
+std::filesystem::path output_root,input_root;
 std::unique_ptr<mcp::Jobs> jobs;
 bool rollback_uncertain = false;
 std::atomic<bool> *current_cancel = nullptr; // Only the CAD thread reads this pointer.
@@ -174,7 +199,10 @@ const std::vector<std::string> names = {
     "acad_list_instances",       "acad_get_status",     "acad_get_capabilities", "acad_list_documents",
     "acad_get_document_info",    "acad_query_entities", "acad_get_entity",       "acad_create_line",
     "acad_create_circle",        "acad_create_box",     "acad_move_entities",    "acad_erase_entities",
-    "acad_get_operation_status", "acad_save_copy"};
+    "acad_get_operation_status", "acad_save_copy", "acad_list_layers", "acad_create_layer",
+    "acad_create_text", "acad_create_mtext", "acad_create_dimension", "acad_list_styles", "acad_create_style",
+    "acad_create_arc", "acad_create_polyline", "acad_transform_entities", "acad_offset_entity", "acad_edit_curve", "acad_corner",
+    "acad_get_block", "acad_define_block", "acad_insert_block", "acad_set_attributes", "acad_extrude", "acad_revolve", "acad_boolean", "acad_get_mass_properties", "acad_section_solid", "acad_create_hatch", "acad_create_table", "acad_get_bom", "acad_drill_holes", "acad_create_shaft", "acad_create_feature_control_frame", "acad_get_plot_devices", "acad_list_layouts", "acad_create_layout", "acad_export_pdf", "acad_list_xrefs", "acad_attach_xref", "acad_manage_xref", "acad_run_batch", "acad_get_view", "acad_set_view"};
 
 json identity(AcDbDatabase *db) {
     auto &s = state(db);
@@ -214,8 +242,14 @@ struct Transaction {
     }
     ~Transaction() {
         if (active) {
+            // Rollback emits object-modified/unappended notifications too.
+            // They belong to this transaction, not an external user edit.
+            auto tracked=documents.find(db);
+            const bool wasWriting=tracked!=documents.end()&&tracked->second.writing;
+            if(tracked!=documents.end())tracked->second.writing=true;
             if (manager->abortTransaction() != Acad::eOk)
                 rollback_uncertain = true;
+            if(tracked!=documents.end())tracked->second.writing=wasWriting;
 #ifdef AUTOCAD_MCP_TESTING
             if (test_abort_uncertain) {
                 test_abort_uncertain = false;
@@ -270,12 +304,16 @@ double output_factor(AcDbDatabase *db, const json &p) {
     return u == "drawing_unit" ? 1 : drawing_metres(db) / unit_metres(u);
 }
 
+#include "annotations.hpp"
+
 std::string layer_name(AcDbEntity *e) {
     auto raw = e->layer();
     auto name = utf8(raw);
     acutDelString(raw);
     return name;
 }
+json block_geometry(AcDbEntity *e,double f);
+json detailing_geometry(AcDbEntity *e,double f);
 std::string type(AcDbEntity *e) {
     if (e->isKindOf(AcDbLine::desc()))
         return "LINE";
@@ -283,10 +321,34 @@ std::string type(AcDbEntity *e) {
         return "CIRCLE";
     if (e->isKindOf(AcDb3dSolid::desc()))
         return "3DSOLID";
+    if (AcDbArc::cast(e))return "ARC";
+    if (AcDbPolyline::cast(e))return "LWPOLYLINE";
+    if (AcDbFcf::cast(e))return "FCF";
+    if (AcDbHatch::cast(e))return "HATCH";
+    if (AcDbRegion::cast(e))return "REGION";
+    if (AcDbTable::cast(e))return "TABLE";
+    if (AcDbBlockReference::cast(e))return "INSERT";
+    auto annotation = annotation_type(e);
+    if (!annotation.empty()) return annotation;
     return "UNSUPPORTED";
 }
 json geometry(AcDbEntity *e, double f) {
     json result = {{"handle", handle(e)}, {"type", type(e)}, {"layer", layer_name(e)}};
+    include(result, annotation_geometry(e, f));
+    include(result, block_geometry(e,f));
+    include(result, detailing_geometry(e,f));
+    if(auto arc=AcDbArc::cast(e)){
+        result["center"]=xyz(arc->center(),f);result["radius"]=arc->radius()*f;
+        AcGePoint3d a,b;cad(arc->getStartPoint(a));cad(arc->getEndPoint(b));result["start"]=xyz(a,f);result["end"]=xyz(b,f);
+        result["startAngle"]=arc->startAngle();result["endAngle"]=arc->endAngle();result["length"]=arc->length()*f;
+    }
+    if(auto poly=AcDbPolyline::cast(e)){
+        need(poly->numVerts()<=512,"DOC_BUSY","Polyline vertex query limit reached");
+        result["vertices"]=json::array();result["bulges"]=json::array();result["closed"]=static_cast<bool>(poly->isClosed());
+        for(unsigned int i=0;i<poly->numVerts();++i){AcGePoint3d p;double bulge;cad(poly->getPointAt(i,p));cad(poly->getBulgeAt(i,bulge));result["vertices"].push_back(xyz(p,f));result["bulges"].push_back(bulge);}
+        double length=0,end=0;cad(poly->getEndParam(end));cad(poly->getDistAtParam(end,length));result["length"]=length*f;
+        double area=0;if(poly->isClosed() && poly->getArea(area)==Acad::eOk)result["area"]=area*f*f;
+    }
     if (auto line = AcDbLine::cast(e)) {
         result["start"] = xyz(line->startPoint(), f);
         result["end"] = xyz(line->endPoint(), f);
@@ -298,7 +360,9 @@ json geometry(AcDbEntity *e, double f) {
         result["normal"] = json::array({circle->normal().x, circle->normal().y, circle->normal().z});
     }
     AcDbExtents bounds;
-    if (e->getGeomExtents(bounds) == Acad::eOk)
+    // FCF visual bounds depend on a regenerated graphics/font cache and differ
+    // in an unrendered side database. Do not expose them as measured geometry.
+    if (!AcDbFcf::cast(e) && !result.value("externalReference",false) && e->getGeomExtents(bounds) == Acad::eOk)
         result["extents"] = {{"min", xyz(bounds.minPoint(), f)}, {"max", xyz(bounds.maxPoint(), f)}};
     if (auto solid = AcDb3dSolid::cast(e)) {
         double volume = 0, mi[3]{}, pi[3]{}, pm[3]{}, rg[3]{};
@@ -322,18 +386,20 @@ void modelspace(AcDbDatabase *db, AcDbEntity *entity) {
     record->close();
     need(ok, "UNSUPPORTED_ON_PLATFORM", "Only modelspace entities are supported");
 }
+void writable_block_attributes(AcDbEntity *e);
 void writable_entity(AcDbDatabase *db, AcDbEntity *e) {
     modelspace(db, e);
     need(type(e) != "UNSUPPORTED", "UNSUPPORTED_ON_PLATFORM", "Unsupported entity type");
-    if (type(e) == "3DSOLID")
-        need(state(db).boxes.contains(handle(e)), "UNSUPPORTED_ON_PLATFORM",
-             "Only bridge-created box solids are editable in this phase");
     AcDbLayerTableRecord *layer = nullptr;
     cad(acdbOpenObject(layer, e->layerId(), AcDb::kForRead));
     bool locked = layer->isLocked();
     layer->close();
     need(!locked, "SECURITY_DENIED", "Layer is locked");
+    writable_block_attributes(e);
 }
+
+AcDbObjectId iterator_id(AcDbBlockTableRecordIterator *it);
+#include "blocks.hpp"
 
 void validate(const std::string &method, const json &p) {
     need(runtime && GetFileAttributesW(runtime->grant_file().c_str()) != INVALID_FILE_ATTRIBUTES,
@@ -343,6 +409,17 @@ void validate(const std::string &method, const json &p) {
         {"acad_get_capabilities", {"instanceId", "documentId", "documentEpoch"}},
         {"acad_list_documents", {"instanceId"}},
         {"acad_get_document_info", {"instanceId", "documentId", "documentEpoch"}},
+        {"acad_list_layers", {"instanceId", "documentId", "documentEpoch"}},
+        {"acad_list_styles", {"instanceId", "documentId", "documentEpoch"}},
+        {"acad_get_block", {"instanceId", "documentId", "documentEpoch", "coordinateSystem", "lengthUnit", "name"}},
+        {"acad_define_block", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "name", "basePoint", "targets", "attributes"}},
+        {"acad_insert_block", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "name", "position", "rotation", "scale", "attributes", "layer"}},
+        {"acad_set_attributes", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "entityRef", "attributes"}},
+        {"acad_create_style", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "kind", "name", "font", "widthFactor", "textStyle", "textHeight", "arrowSize", "precision", "dashes"}},
+        {"acad_create_layer", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "name", "colorIndex", "lineweight", "linetype"}},
+        {"acad_create_text", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "position", "text", "height", "rotation", "layer", "style"}},
+        {"acad_create_mtext", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "position", "text", "height", "width", "rotation", "layer", "style"}},
+        {"acad_create_dimension", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "kind", "start", "end", "linePoint", "rotation", "leaderLength", "textHeight", "arrowSize", "precision", "tolerance", "layer", "style"}},
         {"acad_query_entities",
          {"instanceId", "documentId", "documentEpoch", "coordinateSystem", "lengthUnit", "projection",
           "filter", "limit", "cursor"}},
@@ -358,11 +435,38 @@ void validate(const std::string &method, const json &p) {
         {"acad_create_box",
          {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem",
           "lengthUnit", "center", "size", "layer"}},
+        {"acad_create_arc", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "center", "radius", "startAngle", "endAngle", "layer"}},
+        {"acad_create_polyline", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "vertices", "closed", "layer"}},
         {"acad_move_entities",
          {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem",
           "lengthUnit", "targets", "delta"}},
         {"acad_erase_entities",
          {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "targets"}},
+        {"acad_transform_entities", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "targets", "mode", "delta", "center", "angle", "factor", "copy", "lineStart", "lineEnd", "count", "step", "angleStep"}},
+        {"acad_offset_entity", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "entityRef", "distance", "sidePoint"}},
+        {"acad_edit_curve", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "entityRef", "boundaries", "mode", "keepPoint", "end"}},
+        {"acad_corner", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "targets", "kind", "radius", "distanceA", "distanceB", "trim"}},
+        {"acad_extrude", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","entityRef","height","keepProfile","layer"}},
+        {"acad_revolve", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","entityRef","axisStart","axisEnd","angle","keepProfile","layer"}},
+        {"acad_boolean", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","entityRef","tools","operation","keepTools"}},
+        {"acad_get_mass_properties", {"instanceId","documentId","documentEpoch","coordinateSystem","lengthUnit","entityRef","densityKgM3"}},
+        {"acad_section_solid", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","entityRef","origin","normal","layer"}},
+        {"acad_create_hatch", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","targets","pattern","scale","angle","layer"}},
+        {"acad_create_table", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","position","rows","columnWidths","rowHeight","textHeight","layer"}},
+        {"acad_get_bom", {"instanceId","documentId","documentEpoch","targets","groupBy"}},
+        {"acad_drill_holes", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","entityRef","centers","diameter","depth","direction","entry"}},
+        {"acad_create_shaft", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","base","segments","layer"}},
+        {"acad_create_feature_control_frame", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","position","characteristic","tolerance","diameterZone","materialCondition","datums","textHeight","layer"}},
+        {"acad_get_plot_devices", {"instanceId","documentId","documentEpoch"}},
+        {"acad_list_layouts", {"instanceId","documentId","documentEpoch"}},
+        {"acad_create_layout", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","name","device","media","rotation","viewport"}},
+        {"acad_export_pdf", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","layoutName","outputRootId","relativePath","overwrite"}},
+        {"acad_list_xrefs", {"instanceId","documentId","documentEpoch"}},
+        {"acad_attach_xref", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","inputRootId","relativePath","name","position","scale","rotation","overlay","layer"}},
+        {"acad_manage_xref", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","name","mode","targets"}},
+        {"acad_run_batch", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","steps"}},
+        {"acad_get_view", {"instanceId","documentId","documentEpoch","coordinateSystem","lengthUnit"}},
+        {"acad_set_view", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","center","direction","height"}},
         {"acad_get_operation_status", {"instanceId", "documentId", "documentEpoch", "operationId"}},
         {"acad_save_copy",
          {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "outputRootId",
@@ -398,17 +502,19 @@ void validate(const std::string &method, const json &p) {
     if (mutation(method))
         number(p, "expectedRevision");
     if (method == "acad_get_entity" || method == "acad_query_entities" || method == "acad_create_line" ||
-        method == "acad_create_circle" || method == "acad_create_box" || method == "acad_move_entities")
+        method == "acad_create_circle" || method == "acad_create_box" || method == "acad_move_entities" ||
+        method == "acad_create_text" || method == "acad_create_mtext" || method == "acad_create_dimension" || method == "acad_create_arc" || method == "acad_create_polyline" || method == "acad_transform_entities" || method=="acad_offset_entity" || method=="acad_edit_curve" || method=="acad_corner" || method=="acad_get_block" || method=="acad_define_block" || method=="acad_insert_block" || method=="acad_extrude" || method=="acad_revolve" || method=="acad_boolean" || method=="acad_get_mass_properties" || method=="acad_section_solid" || method=="acad_create_hatch" || method=="acad_create_table" || method=="acad_drill_holes" || method=="acad_create_shaft" || method=="acad_create_feature_control_frame" || method=="acad_create_layout" || method=="acad_attach_xref" || method=="acad_run_batch" || method=="acad_get_view" || method=="acad_set_view")
         need(text(p, "coordinateSystem") == "WCS");
     if (p.contains("projection")) {
         need(p.at("projection").is_array() && p.at("projection").size() > 0 &&
-             p.at("projection").size() <= 11);
+             p.at("projection").size() <= 64);
         std::set<std::string> found;
         for (auto &field : p.at("projection")) {
             need(field.is_string());
             auto f = field.get<std::string>();
             need(std::set<std::string>{"handle", "type", "layer", "start", "end", "center", "radius", "size",
-                                       "extents", "volume"}
+                                       "extents", "volume", "text", "position", "height", "width", "rotation",
+                                       "dimensionKind", "measurement", "displayValue", "dimensionScale", "textPosition", "linePoint", "textHeight", "arrowSize", "precision", "tolerance", "leaderLength", "style", "vertices", "bulges", "closed", "length", "area", "startAngle", "endAngle", "blockName", "scale", "attributes", "attributeGeometry", "pattern", "patternScale", "patternAngle", "loopCount", "rows", "columnWidths", "rowHeights", "externalReference"}
                      .contains(f) &&
                  found.insert(f).second);
         }
@@ -520,7 +626,7 @@ json query(AcDbDatabase *db, const json &p) {
     for (auto it = filter.begin(); it != filter.end(); ++it)
         need((it.key() == "type" || it.key() == "layer") && it.value().is_string());
     const auto requested = filter.value("type", std::string());
-    need(requested.empty() || requested == "LINE" || requested == "CIRCLE" || requested == "3DSOLID");
+    need(requested.empty() || requested == "LINE" || requested == "CIRCLE" || requested == "3DSOLID" || requested == "TEXT" || requested == "MTEXT" || requested == "DIMENSION" || requested=="ARC" || requested=="LWPOLYLINE" || requested=="INSERT" || requested=="HATCH" || requested=="REGION" || requested=="TABLE" || requested=="FCF");
     const auto limit = p.contains("limit") ? number(p, "limit") : 100;
     need(limit >= 1 && limit <= 1000);
     json signature = p;
@@ -593,12 +699,22 @@ bool close_point(const json &actual, const json &expected, double tolerance) {
 bool verify_geometry(const std::string &method, const json &p, const json &before, const json &after) {
     auto unit = p.value("lengthUnit", std::string("drawing_unit"));
     const double tolerance = unit == "m" ? 1e-9 : unit == "inch" ? 1e-6 / 25.4 : 1e-6;
+    if (method == "acad_create_text" || method == "acad_create_mtext" || method == "acad_create_dimension")
+        return verify_annotation(method, p, after, tolerance);
     if (method == "acad_create_line")
         return close_point(after[0].at("start"), p.at("start"), tolerance) &&
                close_point(after[0].at("end"), p.at("end"), tolerance);
     if (method == "acad_create_circle")
         return close_point(after[0].at("center"), p.at("center"), tolerance) &&
                std::abs(after[0].at("radius").get<double>() - p.at("radius").get<double>()) <= tolerance;
+    if(method=="acad_create_arc")return close_point(after[0].at("center"),p.at("center"),tolerance)&&
+        std::abs(after[0].at("radius").get<double>()-p.at("radius").get<double>())<=tolerance &&
+        std::abs(std::remainder(after[0].at("startAngle").get<double>()-annotation_number(p,"startAngle"),2*3.141592653589793))<1e-9 &&
+        std::abs(std::remainder(after[0].at("endAngle").get<double>()-annotation_number(p,"endAngle"),2*3.141592653589793))<1e-9;
+    if(method=="acad_create_polyline"){
+        if(after[0].at("closed")!=p.at("closed")||after[0].at("vertices").size()!=p.at("vertices").size())return false;
+        for(std::size_t i=0;i<p.at("vertices").size();++i)if(!close_point(after[0].at("vertices")[i],p.at("vertices")[i],tolerance))return false;
+    }
     if (method == "acad_create_box") {
         const auto &size = p.at("size");
         double expected = size[0].get<double>() * size[1].get<double>() * size[2].get<double>();
@@ -611,7 +727,15 @@ bool verify_geometry(const std::string &method, const json &p, const json &befor
         if (before.size() != after.size())
             return false;
         for (std::size_t i = 0; i < before.size(); ++i) {
-            for (const auto &field : {"start", "end", "center"}) {
+            if(before[i].contains("attributeGeometry")){
+                if(before[i].at("attributeGeometry").size()!=after[i].at("attributeGeometry").size())return false;
+                for(std::size_t j=0;j<before[i].at("attributeGeometry").size();++j){auto expected=before[i].at("attributeGeometry")[j].at("position");for(int a=0;a<3;++a)expected[a]=expected[a].get<double>()+p.at("delta")[a].get<double>();if(!close_point(after[i].at("attributeGeometry")[j].at("position"),expected,tolerance))return false;}
+            }
+            if(before[i].contains("vertices")){
+                if(before[i].at("vertices").size()!=after[i].at("vertices").size())return false;
+                for(std::size_t j=0;j<before[i].at("vertices").size();++j){auto expected=before[i].at("vertices")[j];for(int a=0;a<3;++a)expected[a]=expected[a].get<double>()+p.at("delta")[a].get<double>();if(!close_point(after[i].at("vertices")[j],expected,tolerance))return false;}
+            }
+            for (const auto &field : {"start", "end", "center", "position", "linePoint", "textPosition"}) {
                 if (!before[i].contains(field))
                     continue;
                 auto expected = before[i].at(field);
@@ -624,6 +748,12 @@ bool verify_geometry(const std::string &method, const json &p, const json &befor
     }
     return true;
 }
+bool same_geometry(const json &a,const json &b);
+#include "geometry2d.hpp"
+#include "curve_edits.hpp"
+#include "solids.hpp"
+#include "detailing.hpp"
+
 json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
     auto &s = state(db);
     need(s.revision == number(p, "expectedRevision"), "STALE_REVISION", "Drawing changed before operation");
@@ -649,7 +779,10 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
     if (method == "acad_move_entities")
         for (auto e : selected)
             before.push_back(geometry(e, output_factor(db, p)));
+    need(before.dump().size()<200000,"DOC_BUSY","Mutation geometry response budget reached");
     std::unique_ptr<AcDbEntity> created;
+    if (method == "acad_create_text" || method == "acad_create_mtext" || method == "acad_create_dimension")
+        created = make_annotation(db, method, p, f);
     if (method == "acad_create_line") {
         auto a = point(p, "start", f), b = point(p, "end", f);
         need(a.distanceTo(b) > 0);
@@ -663,6 +796,18 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
         if (p.contains("normal"))
             need(point(p, "normal") == AcGePoint3d(0, 0, 1));
         created = std::make_unique<AcDbCircle>(c, AcGeVector3d::kZAxis, radius);
+    }
+    if(method=="acad_create_arc"){
+        auto c=point(p,"center",f);double radius=annotation_number(p,"radius")*f,a=annotation_number(p,"startAngle"),b=annotation_number(p,"endAngle");
+        need(c.z==0&&radius>0&&std::isfinite(radius)&&std::abs(std::sin((b-a)/2))>1e-9);
+        created=std::make_unique<AcDbArc>(c,AcGeVector3d::kZAxis,radius,a,b);
+    }
+    if(method=="acad_create_polyline"){
+        need(p.contains("vertices")&&p.at("vertices").is_array()&&p.at("vertices").size()>=2&&p.at("vertices").size()<=512&&p.contains("closed")&&p.at("closed").is_boolean());
+        const auto &vertices=p.at("vertices");bool closed=p.at("closed").get<bool>();need(!closed||vertices.size()>=3);
+        auto poly=std::make_unique<AcDbPolyline>(static_cast<unsigned int>(vertices.size()));AcGePoint3d first,previous;
+        for(std::size_t i=0;i<vertices.size();++i){auto v=point(json{{"value",vertices[i]}},"value",f);need(v.z==0&&(i==0||v!=previous));if(i==0)first=v;previous=v;cad(poly->addVertexAt(static_cast<unsigned int>(i),AcGePoint2d(v.x,v.y)));}
+        need(!closed||first!=previous);poly->setClosed(closed);created=std::move(poly);
     }
     if (method == "acad_create_box") {
         auto center = point(p, "center", f), size = point(p, "size", f);
@@ -683,12 +828,12 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
                    {"error", nullptr}};
     include(result, identity(db));
     std::vector<AcDbObjectId> verify;
-    std::vector<std::string> new_boxes;
     check_cancel();
     s.writing = true;
     try {
         if (created) {
             created->setDatabaseDefaults(db);
+            configure_annotation(created.get(), db, p, f);
             if (p.contains("layer"))
                 cad(created->setLayer(wide(text(p, "layer")).c_str()));
             else
@@ -702,10 +847,9 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
             cad(model->appendAcDbEntity(id, created.get()));
             auto entity = created.release();
             cad(tx.manager->addNewlyCreatedDBRObject(entity, true));
+            if (auto dimension = AcDbDimension::cast(entity)) cad(dimension->recomputeDimBlock(true));
             result["created"].push_back(ref(db, entity));
             verify.push_back(id);
-            if (method == "acad_create_box")
-                new_boxes.push_back(handle(entity));
         } else {
             auto delta = method == "acad_move_entities" ? point(p, "delta", f) : AcGePoint3d::kOrigin;
             for (auto entity : selected) {
@@ -734,8 +878,6 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
         tx.commit();
         s.writing = false;
         s.revision++;
-        for (auto &h : new_boxes)
-            s.boxes.insert(h);
         cursors.clear();
     } catch (...) {
         s.writing = false;
@@ -843,6 +985,14 @@ json snapshot_geometry(AcDbDatabase *db) {
     tx.commit();
     return values;
 }
+json snapshot_symbols(AcDbDatabase *db) {
+    json values=json::object();
+    // Bind result lifetimes before range iteration over their member arrays.
+    const auto layers=list_layers(db),styles=list_styles(db);
+    for(const auto &layer:layers.at("layers"))if(!layer.value("dependent",false))values["layer:"+layer.at("name").get<std::string>()]=layer;
+    for(const auto &style:styles.at("styles"))if(!style.value("dependent",false))values[style.at("kind").get<std::string>()+":"+style.at("name").get<std::string>()]=style;
+    return values;
+}
 bool same_geometry(const json &a, const json &b) {
     if (a.is_number() && b.is_number()) {
         const double x = a.get<double>(), y = b.get<double>();
@@ -865,6 +1015,45 @@ bool same_geometry(const json &a, const json &b) {
     }
     return a == b;
 }
+std::string geometry_difference(const json &a,const json &b,const std::string &path="geometry"){
+    if(same_geometry(a,b))return {};
+    if(a.is_number()&&b.is_number())return path+" ("+a.dump()+" -> "+b.dump()+")";
+    if(a.is_object()&&b.is_object())for(const auto key:{"textHeight","dimensionScale","style","text","position"})
+        if(a.contains(key)&&b.contains(key)&&!same_geometry(a.at(key),b.at(key)))return geometry_difference(a.at(key),b.at(key),path+"."+key);
+    if(a.is_object()&&b.is_object())for(auto it=a.begin();it!=a.end();++it){
+        if(!b.contains(it.key()))return path+"."+it.key();
+        if(!same_geometry(it.value(),b.at(it.key())))return geometry_difference(it.value(),b.at(it.key()),path+"."+it.key());
+    }
+    if(a.is_array()&&b.is_array())for(std::size_t i=0;i<std::min(a.size(),b.size());++i)if(!same_geometry(a[i],b[i]))return geometry_difference(a[i],b[i],path+"["+std::to_string(i)+"]");
+    return path;
+}
+void copy_missing_symbols(AcDbDatabase *source, AcDbDatabase *copy) {
+    const std::vector<std::pair<AcDbObjectId,AcDbObjectId>> tables={
+        {source->linetypeTableId(),copy->linetypeTableId()},
+        {source->textStyleTableId(),copy->textStyleTableId()},
+        {source->dimStyleTableId(),copy->dimStyleTableId()},
+        {source->layerTableId(),copy->layerTableId()},
+        {source->blockTableId(),copy->blockTableId()}};
+    for(const auto &[from,to]:tables) {
+        AcDbObjectIdArray missing;
+        {
+            Transaction read(source);auto src=read.get<AcDbSymbolTable>(from);
+            AcDbSymbolTable *dst=nullptr;cad(acdbOpenObject(dst,to,AcDb::kForRead));
+            struct Close {AcDbSymbolTable *value;~Close(){value->close();}} close{dst};
+            AcDbSymbolTableIterator *raw=nullptr;cad(src->newIterator(raw));std::unique_ptr<AcDbSymbolTableIterator> it(raw);
+            for(;!it->done();it->step()) {AcDbObjectId id;cad(it->getRecordId(id));auto record=read.get<AcDbSymbolTableRecord>(id);
+                if(record->isDependent())continue;
+                if(auto block=AcDbBlockTableRecord::cast(record);block&&(block->isLayout()||block->isAnonymous()||block->isFromExternalReference()))continue;
+                AcString name;cad(record->getName(name));if(!dst->has(name.kACharPtr()))missing.append(id);
+            }
+            read.commit();
+        }
+        if(!missing.isEmpty()){AcDbIdMapping map;cad(source->wblockCloneObjects(missing,to,map,AcDb::kDrcIgnore,false),"save.clone_unused_symbols");}
+    }
+}
+json layout_snapshot(AcDbDatabase *db);
+json xref_snapshot(AcDbDatabase *db);
+
 json save_copy(AcDbDatabase *db, const json &p) {
     auto &s = state(db);
     need(s.revision == number(p, "expectedRevision"), "STALE_REVISION", "Drawing changed before save");
@@ -891,6 +1080,10 @@ json save_copy(AcDbDatabase *db, const json &p) {
     const auto original_dirty = dbmod();
     const auto count = entity_count(db);
     const auto original_geometry = snapshot_geometry(db);
+    const auto original_symbols = snapshot_symbols(db);
+    const auto original_blocks = snapshot_blocks(db);
+    const auto original_layouts = layout_snapshot(db);
+    const auto original_xrefs = xref_snapshot(db);
     auto staging = output_root / (L"staging-" + wide(mcp::random_hex(16)));
     need(CreateDirectoryW(staging.c_str(), nullptr) != FALSE, "OUTPUT_PATH_DENIED",
          "Cannot create staging directory");
@@ -899,10 +1092,11 @@ json save_copy(AcDbDatabase *db, const json &p) {
     json result;
     try {
         AcDbDatabase *raw = nullptr;
-        cad(db->wblock(raw));
+        cad(db->wblock(raw),"save.wblock");
         std::unique_ptr<AcDbDatabase> copy(raw);
         need(copy != nullptr, "EXECUTION_FAILED", "Snapshot creation failed");
-        cad(copy->saveAs(temporary.c_str(), false));
+        copy_missing_symbols(db,copy.get());
+        cad(copy->saveAs(temporary.c_str(), false),"save.write_copy");
         copy.reset();
 #ifdef AUTOCAD_MCP_TESTING
         if (next_fault == "source_side_effect") {
@@ -916,8 +1110,17 @@ json save_copy(AcDbDatabase *db, const json &p) {
         cad(reopened.closeInput(true));
         need(entity_count(&reopened) == count && reopened.insunits() == original_units, "VERIFICATION_FAILED",
              "DWG snapshot differs");
-        need(same_geometry(original_geometry, snapshot_geometry(&reopened)), "VERIFICATION_FAILED",
-             "Reopened geometry differs from source");
+        const auto reopened_geometry=snapshot_geometry(&reopened);
+        if(!same_geometry(original_geometry,reopened_geometry))
+            throw Failure{"VERIFICATION_FAILED","Reopened geometry differs at "+geometry_difference(original_geometry,reopened_geometry)};
+        need(same_geometry(original_symbols, snapshot_symbols(&reopened)), "VERIFICATION_FAILED",
+             "Reopened layer or style metadata differs from source");
+        need(same_geometry(original_xrefs,xref_snapshot(&reopened)),"VERIFICATION_FAILED","Reopened xref declarations differ from source");
+        const auto reopened_layouts=layout_snapshot(&reopened);
+        if(!same_geometry(original_layouts,reopened_layouts))
+            throw Failure{"VERIFICATION_FAILED","Reopened layouts differ at "+geometry_difference(original_layouts,reopened_layouts)};
+        need(same_geometry(original_blocks,snapshot_blocks(&reopened)),"VERIFICATION_FAILED",
+             "Reopened named block definitions differ from source");
         need(std::wstring(acDocManager->curDocument()->fileName()) == original_name &&
                  dbmod() == original_dirty && db->insunits() == original_units,
              "PARTIAL_APPLY", "Source state changed during snapshot; no output was published");
@@ -935,7 +1138,9 @@ json save_copy(AcDbDatabase *db, const json &p) {
                   {"verification",
                    {{"modelspaceEntityCount", count},
                     {"supportedGeometryCount", original_geometry.size()},
-                    {"scope", "LINE/CIRCLE/3DSOLID modelspace geometry, count and INSUNITS"},
+                    {"symbolRecordCount",original_symbols.size()},
+                    {"blockDefinitionCount",original_blocks.size()},
+                    {"scope", "Supported modelspace geometry and annotations, bounded layer/style metadata, count and INSUNITS"},
                     {"otherDrawingDataVerified", false}}}};
         include(result, identity(db));
         check_cancel();
@@ -1080,15 +1285,15 @@ json desktop_test_action(const json &p) {
         synthetic_veto.enabled = action == "veto_on";
         return {{"enabled", synthetic_veto.enabled}};
     }
-    if (action == "seed_arc" || action == "external_edit") {
+    if (action == "seed_point" || action == "external_edit") {
         auto target = identity(primary->database());
         DocumentContext context(target, true);
         auto db = primary->database();
         Transaction tx(db);
         auto model = tx.get<AcDbBlockTableRecord>(acdbSymUtil()->blockModelSpaceId(db), AcDb::kForWrite);
         std::unique_ptr<AcDbEntity> entity;
-        if (action == "seed_arc")
-            entity = std::make_unique<AcDbArc>(AcGePoint3d(20, 20, 0), AcGeVector3d::kZAxis, 10, 0, 1);
+        if (action == "seed_point")
+            entity = std::make_unique<AcDbPoint>(AcGePoint3d(20,20,0));
         else
             entity = std::make_unique<AcDbLine>(AcGePoint3d(5, 5, 0), AcGePoint3d(15, 5, 0));
         entity->setDatabaseDefaults(db);
@@ -1174,6 +1379,11 @@ json desktop_test_action(const json &p) {
 }
 #endif
 
+#include "plotting.hpp"
+#include "xrefs.hpp"
+#include "batch.hpp"
+#include "views.hpp"
+
 json execute(const json &request) {
     auto method = request.at("method").get<std::string>();
     const auto &p = request.at("params");
@@ -1220,6 +1430,7 @@ json execute(const json &request) {
                   {"maxTargets", 100},
                   {"concurrentCalls", 1},
                   {"flatOutputFilenameOnly", true}}},
+                {"inputRoots",json::array({{{"id","session-input"},{"scope","private staged DWG input"}}})},
                 {"outputRoots", json::array({{{"id", "test-output"}, {"scope", "private session output"}}})}};
         }
         if (mutation(method))
@@ -1239,12 +1450,25 @@ json execute(const json &request) {
                  "DOC_BUSY", "Another database transaction is active");
         if (method == "acad_get_document_info")
             return doc_info(context.doc);
+        if (method == "acad_list_layers") return list_layers(db);
+        if (method == "acad_list_styles") return list_styles(db);
+        if (method == "acad_get_block") return get_block(db,p);
+        if (method == "acad_get_mass_properties") return mass_properties(db,p);
+        if (method == "acad_get_bom") return get_bom(db,p);
+        if (method == "acad_get_plot_devices") return plot_devices(db);
+        if (method == "acad_list_layouts") return list_layouts(db);
+        if (method == "acad_list_xrefs") return list_xrefs(db);
+        if (method == "acad_get_view") return get_view(db,p);
         if (method == "acad_get_entity" || method == "acad_query_entities")
             return query(db, p);
         need(!context.doc->isReadOnly(), "DOC_READ_ONLY", "Drawing is read only");
         json result;
         try {
-            result = method == "acad_save_copy" ? save_copy(db, p) : mutate(db, method, p);
+            result = method=="acad_set_view"?set_view(db,p):method=="acad_run_batch"?run_batch(db,p):(method=="acad_attach_xref"||method=="acad_manage_xref")?edit_xrefs(db,method,p):method=="acad_create_layout"?create_layout(db,p):method=="acad_export_pdf"?export_pdf(db,p):method == "acad_save_copy" ? save_copy(db, p) : method == "acad_create_layer" ? create_layer(db, p) : method == "acad_create_style" ? create_style(db, p) : method == "acad_transform_entities" ? transform_entities(db,p) :
+                (method=="acad_offset_entity"||method=="acad_edit_curve"||method=="acad_corner")?edit_curves(db,method,p):
+                (method=="acad_define_block"||method=="acad_insert_block"||method=="acad_set_attributes")?edit_blocks(db,method,p):
+                (method=="acad_extrude"||method=="acad_revolve"||method=="acad_boolean"||method=="acad_drill_holes"||method=="acad_create_shaft")?edit_solids(db,method,p):
+                (method=="acad_section_solid"||method=="acad_create_hatch"||method=="acad_create_table"||method=="acad_create_feature_control_frame")?create_detailing(db,method,p):mutate(db, method, p);
         } catch (const Failure &e) {
             result = mcp::error(e.code, e.message, e.code == "PARTIAL_APPLY");
             if (e.code == "PARTIAL_APPLY")
@@ -1273,12 +1497,14 @@ json execute(const json &request) {
 }
 
 HWND dispatcher = nullptr, main_window = nullptr;
+std::unique_ptr<mcp::Runtime> desktop_host;
+void desktop_sync();
 std::atomic<bool> shutdown = false, test_done = false;
 DWORD main_thread = 0;
 void *application_id = nullptr;
 bool application_locked = false, context_posted = false, draining = false;
 void release_application_if_idle() {
-    if (application_locked && !runtime && !context_posted) {
+    if (application_locked && !runtime && !desktop_host && !context_posted) {
         acrxUnlockApplication(application_id);
         application_locked = false;
     }
@@ -1404,7 +1630,11 @@ void start() {
         jobs = std::make_unique<mcp::Jobs>();
         shutdown = false;
         test_done = false;
-        auto root = env_path(L"MCP_RUNTIME_DIR");
+        // Normal installs need no machine/user environment modification. An explicit
+        // override remains strict, and each session's secret directory has its own ACL.
+        auto root = GetEnvironmentVariableW(L"MCP_RUNTIME_DIR", nullptr, 0) > 0
+                        ? env_path(L"MCP_RUNTIME_DIR")
+                        : env_path(L"LOCALAPPDATA") / L"AutocadMCP" / L"runtime";
         need(root.is_absolute());
         // Keep DLL code resident while a worker or asynchronous CAD callback can use it.
         if (!application_locked) {
@@ -1429,9 +1659,11 @@ void start() {
         if (GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) > 0)
             allowed.insert(allowed.end(), {"bridge.test_action", "bridge.test_probe"});
 #endif
-        runtime = std::make_unique<mcp::Runtime>(root, schedule, allowed);
+        runtime = std::make_unique<mcp::Runtime>(root, schedule, allowed, AUTOCAD_MCP_BUILD_ID);
         output_root = runtime->grant_file().parent_path() / "output";
         std::filesystem::create_directory(output_root);
+        input_root=runtime->grant_file().parent_path()/"input";std::filesystem::create_directory(input_root);
+        desktop_sync();
         acutPrintf(L"\nAutocad MCP started. Pairing file: %ls\n", runtime->grant_file().c_str());
     } catch (...) {
         stop();
@@ -1443,6 +1675,7 @@ void stop() {
     if (jobs)
         jobs->stop();
     runtime.reset();
+    desktop_sync();
 #ifdef AUTOCAD_MCP_TESTING
     synthetic_outer_transaction.reset();
     if (veto_registered) {
@@ -1466,7 +1699,7 @@ void stop() {
     acutPrintf(L"\nAutocad MCP stopped.\n");
 }
 void pump() {
-    if (!runtime || GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) == 0) {
+    if ((!runtime && !desktop_host) || GetEnvironmentVariableW(L"MCP_TEST_MODE", nullptr, 0) == 0) {
         acutPrintf(L"\nTest pump unavailable.\n");
         return;
     }
@@ -1484,6 +1717,7 @@ void pump() {
     test_pumping = false;
     acutPrintf(L"\nMCP test pump ended.\n");
 }
+#include "desktop_host.hpp"
 } // namespace
 
 extern "C" AcRx::AppRetCode __declspec(dllexport) acrxEntryPoint(AcRx::AppMsgCode code, void *packet) {
@@ -1495,8 +1729,10 @@ extern "C" AcRx::AppRetCode __declspec(dllexport) acrxEntryPoint(AcRx::AppMsgCod
         acedRegCmds->addCommand(L"AUTOCADMCP", L"MCPSTOP", L"MCPSTOP", ACRX_CMD_MODAL, stop);
         acedRegCmds->addCommand(L"AUTOCADMCP", L"MCPPUMP", L"MCPPUMP",
                                 ACRX_CMD_SESSION | ACRX_CMD_NO_UNDO_MARKER, pump);
+        desktop_initialize();
     }
     if (code == AcRx::kUnloadAppMsg) {
+        desktop_shutdown();
         stop();
         acedRegCmds->removeGroup(L"AUTOCADMCP");
     }

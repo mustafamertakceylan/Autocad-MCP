@@ -24,7 +24,7 @@ json error(const std::string &code, const std::string &message, json applied = f
 class Runtime {
   public:
     Runtime(std::filesystem::path root, std::function<json(const json &)> handler,
-            std::vector<std::string> operations);
+            std::vector<std::string> operations, std::string build_id = {});
     ~Runtime();
     Runtime(const Runtime &) = delete;
     Runtime &operator=(const Runtime &) = delete;
@@ -35,12 +35,13 @@ class Runtime {
         return grant_file_;
     }
     void stop();
+    bool expires_within(std::int64_t milliseconds) const;
 
   private:
     void run(std::uintptr_t handle, bool control);
     std::function<json(const json &)> handler_;
     std::filesystem::path directory_, grant_file_;
-    std::string instance_, endpoint_, control_endpoint_, secret_;
+    std::string instance_, endpoint_, control_endpoint_, secret_, build_id_;
     std::int64_t expires_at_ = 0;
     std::vector<std::string> operations_;
     std::atomic<bool> stopping_{false};

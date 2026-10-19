@@ -54,7 +54,7 @@ try {
  check('missing handle rejected', (await raw('acad_get_entity',{...a,coordinateSystem:'WCS',entityRef:missing})).error.code==='TARGET_NOT_FOUND');
  const beforeExternal=await info();await control('external_edit');
  check('external API edit invalidates revision and cursor', (await raw('acad_create_line',{...await args('p3-external-stale'),expectedRevision:beforeExternal.revision})).error.code==='STALE_REVISION'&&(await raw('acad_query_entities',{...a,coordinateSystem:'WCS',lengthUnit:'mm',filter:{},limit:1,projection:['handle','start','volume'],cursor:first.cursor})).error.code==='STALE_CURSOR');
- const seed=await control('seed_arc');
+ const seed=await control('seed_point');
  check('unsupported entity rejected explicitly', (await raw('acad_move_entities',{...await args('p3-unsupported'),start:undefined,end:undefined,targets:[seed.entityRef],delta:[1,0,0]})).error.code==='UNSUPPORTED_ON_PLATFORM');
  const outerArgs=await args('p3-outer-transaction');await control('begin_outer_transaction');
  const outerRejected=await raw('acad_create_line',outerArgs);await control('end_outer_transaction');

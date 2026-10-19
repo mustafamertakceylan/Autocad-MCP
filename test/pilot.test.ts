@@ -6,6 +6,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { configureWorkspace, sessionGrant, bindSession } from '../src/pilot.js';
 import { mockPlugin, cleanupFixture } from './fixture.js';
+import { toolNames } from '../src/tools.js';
 
 test('operator setup emits compatible client configs and skills without copying pairing secret or overwriting files', async()=>{
  const plugin=await mockPlugin();
@@ -27,13 +28,13 @@ test('operator setup emits compatible client configs and skills without copying 
  }finally{await plugin.close();await cleanupFixture(plugin.folder);}
 });
 
-test('generated pilot entrypoint serves actual MCP stdio and all 14 tools',async()=>{
+test('generated pilot entrypoint serves actual MCP stdio and the current tool catalog',async()=>{
  const plugin=await mockPlugin(),client=new Client({name:'pilot-test',version:'0.1.0'});
  try{
   const folder=join(plugin.folder,'clients');await configureWorkspace(folder,plugin.grantFile);
   const transport=new StdioClientTransport({command:process.execPath,args:[resolve('dist/src/pilot.js'),'serve','--session-file',join(folder,'autocad-session.json')],stderr:'pipe'});
-  await client.connect(transport);assert.equal((await client.listTools()).tools.length,14);
-  assert.equal((await client.listResources()).resources.length,2);
+  await client.connect(transport);assert.equal((await client.listTools()).tools.length,toolNames.length);
+  assert.equal((await client.listResources()).resources.length,3);
   const resource=await client.readResource({uri:'skill://autocad-mcp/autocad-mcp/SKILL.md'});
   assert.ok('text' in resource.contents[0]! && resource.contents[0].text.includes('name: autocad-mcp'));
   assert.ok(!JSON.stringify(resource).includes(plugin.grant.secret));

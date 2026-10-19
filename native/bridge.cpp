@@ -283,8 +283,8 @@ json error(const std::string &code, const std::string &message, json applied) {
 }
 
 Runtime::Runtime(std::filesystem::path root, std::function<json(const json &)> handler,
-                 std::vector<std::string> operations)
-    : handler_(std::move(handler)), operations_(std::move(operations)) {
+                 std::vector<std::string> operations, std::string build_id)
+    : handler_(std::move(handler)), build_id_(std::move(build_id)), operations_(std::move(operations)) {
 #ifndef _WIN32
     throw std::runtime_error("Native Mac transport is not implemented; no pairing is issued");
 #endif
@@ -327,7 +327,7 @@ Runtime::Runtime(std::filesystem::path root, std::function<json(const json &)> h
     const auto content = json{{"bridgeVersion", "0.1.0"}, {"instanceId", instance_},
                               {"endpoint", endpoint_},    {"controlEndpoint", control_endpoint_},
                               {"secret", secret_},        {"backend", "objectarx"},
-                              {"expiresAt", expires_at_}, {"operations", operations_}}
+                              {"expiresAt", expires_at_}, {"operations", operations_}, {"nativeBuildId", build_id_}}
                              .dump();
 #ifdef _WIN32
     HANDLE file = CreateFileW(grant_file_.c_str(), GENERIC_WRITE, 0, &security.attributes, CREATE_NEW,
@@ -364,6 +364,9 @@ Runtime::Runtime(std::filesystem::path root, std::function<json(const json &)> h
 }
 Runtime::~Runtime() {
     stop();
+}
+bool Runtime::expires_within(std::int64_t milliseconds) const {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() + milliseconds >= expires_at_;
 }
 void Runtime::stop() {
     stopping_ = true;
@@ -411,7 +414,7 @@ void Runtime::run(std::uintptr_t handle, bool control) {
         try {
             const auto nonce = random_hex(32);
             if (!pipe.write(
-                    json{{"nonce", nonce}, {"instanceId", instance_}, {"bridgeVersion", "0.1.0"}}.dump() +
+                    json{{"nonce", nonce}, {"instanceId", instance_}, {"bridgeVersion", "0.1.0"}, {"nativeBuildId", build_id_}}.dump() +
                         "\n",
                     stopping_))
                 continue;
