@@ -15,10 +15,13 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test dist/test/*.test.js",
     "test:live:windows": "npm run build && node dist/test/live-windows.js",
+    "test:phase5:windows": "npm run build && node dist/test/phase5-regression.js",
     "start": "node dist/src/main.js",
     "pilot": "node dist/src/pilot.js",
     "catalog": "npm run build && node dist/test/export-tool-catalog.js",
-    "test:phase5:windows": "npm run build && node dist/test/phase5-regression.js"
+    "package:windows": "npm run build && node scripts/build-windows-package.mjs",
+    "test:installation:windows": "npm run build && node dist/test/installation-windows.js",
+    "test:desktop:windows": "npm run build && node dist/test/desktop-windows.js"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.3.1",
@@ -28,5 +31,6 @@
     "@modelcontextprotocol/client": "2.3.1",
     "@types/node": "24.10.0",
     "typescript": "7.0.2"
-  }
+  },
+  "license": "Apache-2.0"
 }

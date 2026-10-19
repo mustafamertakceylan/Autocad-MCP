@@ -28,6 +28,32 @@ add_executable(bridge_core_test native/core_test.cpp)
 target_link_libraries(bridge_core_test PRIVATE bridge_core)
 enable_testing()
 add_test(NAME bridge_core COMMAND bridge_core_test)
+if(WIN32)
+  enable_language(RC)
+  add_executable(AutocadMcpIconBuilder desktop/make-icon.cpp)
+  target_compile_options(AutocadMcpIconBuilder PRIVATE /utf-8 /W4 /permissive-)
+  target_compile_definitions(AutocadMcpIconBuilder PRIVATE UNICODE _UNICODE NOMINMAX)
+  target_link_libraries(AutocadMcpIconBuilder PRIVATE gdiplus ole32)
+  set(DESKTOP_ICON_FILE "${CMAKE_BINARY_DIR}/desktop-assets/app.ico")
+  set(DESKTOP_LOGO_FILE "${CMAKE_BINARY_DIR}/desktop-assets/app.png")
+  add_custom_command(OUTPUT "${DESKTOP_ICON_FILE}" "${DESKTOP_LOGO_FILE}"
+    COMMAND $<TARGET_FILE:AutocadMcpIconBuilder> "${CMAKE_SOURCE_DIR}/desktop/assets/autocad-mcp-logo.png" "${CMAKE_BINARY_DIR}/desktop-assets"
+    DEPENDS AutocadMcpIconBuilder "${CMAKE_SOURCE_DIR}/desktop/assets/autocad-mcp-logo.png" VERBATIM)
+  add_custom_target(desktop_icon DEPENDS "${DESKTOP_ICON_FILE}" "${DESKTOP_LOGO_FILE}")
+  configure_file(desktop/resources.rc.in "${CMAKE_BINARY_DIR}/desktop-resources.rc" @ONLY)
+  add_executable(AutocadMcpDesktop WIN32 desktop/main.cpp)
+  target_sources(AutocadMcpDesktop PRIVATE "${CMAKE_BINARY_DIR}/desktop-resources.rc")
+  add_dependencies(AutocadMcpDesktop desktop_icon)
+  target_link_libraries(AutocadMcpDesktop PRIVATE bridge_core shell32 user32 gdi32 gdiplus comctl32 ole32 uuid)
+  add_custom_command(TARGET AutocadMcpDesktop POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" "-DBINARY=$<TARGET_FILE:AutocadMcpDesktop>"
+      -DTESTING=OFF "-DVERSION=${PROJECT_VERSION}" -DBUILD_ID=desktop
+      -P "${CMAKE_SOURCE_DIR}/cmake/native-manifest.cmake" VERBATIM)
+  add_executable(desktop_platform_test desktop/platform_test.cpp)
+  target_link_libraries(desktop_platform_test PRIVATE bridge_core shell32 ole32 uuid)
+  add_test(NAME desktop_platform COMMAND desktop_platform_test)
+endif()
+
 set(OBJECTARX_ROOT "" CACHE PATH "Licensed ObjectARX 2027 SDK root")
 option(AUTOCAD_MCP_TESTING "Compile fixed synthetic desktop acceptance controls (never ship)" OFF)
 if(OBJECTARX_ROOT)

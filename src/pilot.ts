@@ -8,6 +8,8 @@ import { z } from 'zod';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { BridgeClient, readGrant } from './bridge.js';
 import { createServer } from './server.js';
+import { installedBuildIdentity } from './installed-build.js';
+import { DesktopBridgeClient, desktopPresence } from './desktop-state.js';
 
 const sessionSchema = z.strictObject({ version: z.literal(1), grantFile: z.string().min(1), instanceId: z.string().min(1) });
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -65,6 +67,15 @@ async function main() {
     if (!rest[i]?.startsWith('--') || !rest[i + 1] || options.has(rest[i]!)) throw Error('Invalid options');
     options.set(rest[i]!, rest[i + 1]!);
   }
+  if (mode === 'desktop-serve' && options.size === 1 && options.has('--state-root')) {
+    const root = resolve(options.get('--state-root')!), bridge = new DesktopBridgeClient(root, await installedBuildIdentity()), presence = await desktopPresence(root);
+    const handle = serveStdio(() => {
+      const server = createServer(bridge); server.server.oninitialized = () => { void presence.initialized().catch(() => {}); }; return server;
+    }, { onerror: () => process.stderr.write('MCP transport error\n') });
+    process.stdin.once('end', () => { void presence.close(); });
+    for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => { void presence.close().finally(() => handle.close()); });
+    return;
+  }
   if (mode === 'pair' && options.size === 2 && options.has('--session-file') && options.has('--grant-file')) {
     await bindSession(options.get('--session-file')!, options.get('--grant-file')!);
     process.stdout.write('Pairing pointer updated. Restart the client MCP connection; running calls are not retargeted.\n'); return;
@@ -74,7 +85,7 @@ async function main() {
     process.stdout.write('Client workspace and Codex/Claude/OpenCode skills configured. No client model was called.\n'); return;
   }
   if ((mode === 'serve' || mode === 'doctor') && options.size === 1 && options.has('--session-file')) {
-    const grantFile = await sessionGrant(options.get('--session-file')!), bridge = new BridgeClient(grantFile);
+    const grantFile = await sessionGrant(options.get('--session-file')!), bridge = new BridgeClient(grantFile, 10000, 64, await installedBuildIdentity());
     if (mode === 'doctor') {
       const grant = await readGrant(grantFile), result = await bridge.call('acad_get_status', { instanceId: grant.instanceId });
       const caps = await bridge.call('acad_get_capabilities', { instanceId: grant.instanceId });
