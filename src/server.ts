@@ -7,7 +7,7 @@ import { descriptions, mutating, toolNames, toolSchemas, validateTool } from './
 import { clientInputSchema } from './client-schema.js';
 
 export function createServer(bridge: Pick<BridgeClient, 'call'>): McpServer {
-  const server = new McpServer({ name: 'autocad-mcp', version: '0.1.0' });
+  const server = new McpServer({ name: 'autocad-mcp', version: '1.0.0' });
   // Fixed public bundle resources: no caller-supplied filesystem paths or credentials.
   for (const [name, relative] of [['autocad-mcp-skill', 'SKILL.md'], ['autocad-mcp-contract', 'references/tools.md'], ['autocad-mcp-mechanical','references/mechanical.md']] as const) {
     const uri = `skill://autocad-mcp/autocad-mcp/${relative}`;
