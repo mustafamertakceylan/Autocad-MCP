@@ -1,5 +1,7 @@
 # Plan
 
+**2026-10-20 ek planı:** Mesleklere özel skill'ler ve Türkçe/İngilizce uygulama kapsamı [bölüm 15](#15-gelecek-aşamalar-meslek-skillleri-ve-iki-dilli-uygulama) altında planlandı; geliştirme başlamadı. Önceki araştırma/prototip kayıtları tarihçedir. Güncel public v1.0.0 ve test durumu [kabul belgesinin 15–16. bölümlerindedir](TEKNIK_DENEME_KABUL.md).
+
 > Durum: 2026-10-18. Faz 2 Windows/ortak prototipi uygulandı; gerçek Core Console kanıtları [kabul belgesinde](TEKNIK_DENEME_KABUL.md). Mac kullanıcı isteğiyle ayrı Faz M'ye taşındı; güncel fazlar Windows üzerinden ilerler. Bu plan gelecekteki fazlara, commit veya yayına izin vermez. Aşağıdaki genel ürün yönü ile sınanmış prototip alt kümesi ayrıdır.
 
 İlgili belgeler: [Kararlar](KARARLAR.md), [Yetenek matrisi](YETENEK_MATRISI.md), [Araştırma](arastirma/MEVCUT_COZUMLER_2026-10-18.md), [Geliştirme rehberi](GELISTIRME.md).
@@ -260,7 +262,7 @@ MCP TypeScript SDK ve spesifikasyon sürümleri arasında farklar olabilir; sür
 
 **Güncel konum:** 2A MCP/IPC çekirdeği ve 2B Windows ObjectARX prototipi yazıldı. 2D'de mm/metre/birimsiz, tek işlem UNDO, revision, dedup, ayrı DWG geometri geri okuma ve hash/dirty koruması Core Console'da geçti. Görünür masaüstünde test pompası olmadan 26 kontrol geçti: çoklu belge/context, UNDO, komut meşguliyeti, kilitli katman ve dosya/junction yarışları. Windows Faz 2 ve Faz 3 tamamlandı. Faz 3: ayrı status/iptal kanalı, kayıt bütçesi, eşzamanlı dedup, rollback/partial doğruluğu ve 56/56 gerçek masaüstü hata enjeksiyonu. Normal eklentiyle 30/30 regresyon geçti. Faz 4 Windows geliştirici pilotu Codex + OpenCode/EVREN MiMo ile tamamlandı: 80×40 mm, Ø10 kontur; oluşturma/taşıma/silme/sorgu/kayıt ve iki DWG reopen kabulü geçti. Claude config/skill hazır; kullanıcı limiti olmadığı için canlı Claude testi çalıştırılmadı. Ortak testler güncel 21/21. Eski 2C Mac paketi ayrı Faz M'dedir ve Windows'u bekletmez. Kullanıcı onayıyla tek kısa [durum kaydı](TEKNIK_DENEME_KABUL.md) tutulur.
 
-1–6 numaralı fazlar güncel Windows hattıdır; mevcut numaralar korunur. Mac ayrı Faz M hattıdır; Windows fazlarının bitişine bağımlılık eklemez. Süre tahmini verilmez. Bir faz, yalnız belge yazıldığı için geliştirme/test açısından tamamlanmış sayılmaz.
+1–8 numaralı fazlar Windows hattıdır; mevcut numaralar korunur. Faz7–8 gelecek aşamalardır. Mac ayrı Faz M hattıdır; Windows fazlarının bitişine bağımlılık eklemez. Süre tahmini verilmez. Bir faz, yalnız belge yazıldığı için geliştirme/test açısından tamamlanmış sayılmaz.
 
 | Faz | Hedef | Somut teslim | Fazın bitiş ölçütü | Şu an |
 |---|---|---|---|---|
@@ -271,6 +273,8 @@ MCP TypeScript SDK ve spesifikasyon sürümleri arasında farklar olabilir; sür
 | **5 — Özellikleri genişletme** | Geniş AutoCAD kapsamını modül modül geliştirmek | Gelişmiş 2B, katman/stil, blok/nitelik, açıklama, ileri 3B, layout/PDF, xref/veri ve isteğe bağlı otomasyon | Her modül kendi API/platform/geri okuma ve hata testlerini geçince açılıyor; desteklenmeyenler açık | Windows ana paketleri uygulandı; ileri alt paketler açık |
 | **6 — Kurulabilir ürün ve dağıtım** | Başkalarının kendi bilgisayarında kurabilmesi | Paketler, imzalama/notarization, istemci ayar rehberi, tanılama, yükseltme/kaldırma ve sürüm belgeleri | Geliştirici araçları olmayan temiz Windows'ta kurulum, kullanım, yükseltme ve kaldırma doğrulanmış; lisans ve yayın kararları kesinleşmiş | Windows public önizleme: ZIP/tepsi/rehber/kurulum kabulü hazır; Apache-2.0 seçildi. Güvenilir imza, temiz cihaz ve gerçek reboot açık |
 | **M — macOS Apple Silicon** | Windows çekirdeğini Mac'e taşımak | ObjectARX arm64 eklentisi, Unix socket, Mac kabulü/pilot/paketleme | SDK/API farkları, gerçek AutoCAD işlemleri, doğru belge/UNDO/kopya ve Mac kurulum testleri bağımsız kanıtlı | Ayrı faz; kullanıcı ayrıca başlatacak, Windows'u engellemez |
+| **7 — Mesleklere özel skill'ler** | Makine, inşaat ve mimari çizim iş akışlarını ayrı paketlemek | Üç ayrı skill; Claude/Codex uyumu; uygulama içinden seçim ve kurulum; antet/çizgi/ölçü profilleri | Meslek başına örnek DWG/PDF, istemci uyumu ve çizim kontrol listesi doğrulanmış | Gelecek aşama; başlanmadı |
+| **8 — İki dilli uygulama ve ayrıntılı yardım** | Türkçe/İngilizce kullanım ve mesleğe göre açıklamalar | Dil seçimi, çevrilmiş arayüz/rehber/hatalar, skill bilgisi ve örnekleri | İki dilde temel akışlar, metin taşması, dil tercihi ve kurulum doğrulanmış | Gelecek aşama; başlanmadı |
 
 ### Faz 2'nin iş sırası ve kabul sınırı
 
@@ -346,3 +350,37 @@ Ayrıntılı dayanaklar: [işlem/API envanteri](OZELLIK_ENVANTERI.md), [iletişi
 - [Geliştirme rehberi](GELISTIRME.md) ve [katkı rehberi](GELISTIRME.md).
 
 İlk plan araştırma kaynaklarına dayanır. Faz 2 güncellemesi yerel kaynak kodu, sabitlenmiş bağımlılıklar, SDK başlıkları ve kabul belgesindeki gerçek komut sonuçlarına dayanır; bu sonuçlar Mac veya tam AutoCAD kapsamına genellenmez.
+
+## 15. Gelecek aşamalar: meslek skill'leri ve iki dilli uygulama
+
+2026-10-20 kullanıcı kararıdır. Bu ek plan geliştirme, commit/push veya yeni release yetkisi değildir. Faz6'nın açık cihaz/yayın kontrolleri korunur; Mac ayrı Faz M'dedir.
+
+### Faz 7 — üç ayrı meslek skill'i
+
+| Skill | Planlanan mesleki içerik |
+|---|---|
+| Makine mühendisliği | Parça/imalat resmi, görünüşler ve kesitler, projeksiyon seçimi, toleranslar, yüzey/diş/kaynak gösterimleri, parça listesi ve antet |
+| İnşaat mühendisliği | Taşıyıcı sistem plan/kesitleri, aks ve kotlar, betonarme/donatı gösterimleri, detaylar, pafta ve antet |
+| Mimarlık | Plan/kesit/cephe, aks/kot ve mahal bilgileri, kapı/pencere gösterimleri, taramalar, pafta ve antet |
+
+Üçü de aşağıdaki ortak çizim denetimlerini mesleğine uygun profille kullanacak:
+
+- **Antet ve pafta:** kağıt boyutu, çerçeve, ölçek, birim, çizim adı/numarası, tarih, revizyon ve kullanıcı tarafından verilen proje alanları. Bilinmeyen alanlar uydurulmaz.
+- **Çizgi hiyerarşisi:** görünür kenar, kesilen eleman, görünmeyen kenar, eksen, ölçü/yardımcı çizgi ve tarama için ayrı katman/çizgi tipi/kalınlık. Ekran görünümü yanında CTB/STB ve çıktı PDF'indeki gerçek kalınlık da kontrol edilir.
+- **Ölçülendirme:** mesleğe ve seçilen standarda göre DIMSTYLE, yazı/ok boyutları, yerleşim, birim, ölçek ve gerektiğinde tolerans. Gerçek geometri ölçülür; ölçü metni geometri hatasını gizlemek için değiştirilmez.
+- **Yerleşim:** görünüş hizaları, boşluklar, ölçek tutarlılığı, antetle çakışma ve okunabilirlik. Simetri parçaya/paftaya uygun olduğunda uygulanır.
+- **Standart profili:** ülke, proje ve disipline göre geçerli standart/sürüm uygulama aşamasında resmi kaynaklardan doğrulanır. Sayısal kalınlık, tolerans veya gösterim değerleri araştırılmadan evrensel varsayılan ilan edilmez.
+
+Mesleki çizim rehberleri geliştirilecek; statik hesap, dayanım veya mevzuat uygunluğu için ayrıca doğrulanmış yöntem gerekir. Mevcut MCP araçlarıyla üretilemeyen gösterimler destek sınırı olarak belirtilir.
+
+**Claude/Codex ve uygulama teslimi:** Mevcut genel MCP skill'inin yanına üç ayrı meslek skill'i konur. Ortak mesleki içerik ile istemciye özgü kurulum yönergeleri ayrılır. Uygulamada meslek seçimi, içerik/standart profili, örnek ve destek sınırı gösterilir; kullanıcı seçimiyle kurulabilir/güncellenebilir paketler sunulur. Kullanıcının mevcut skill'leri korunur; istemciye özgü keşif/kurulum davranışı ayrı doğrulanır. Claude canlı testi ancak erişim olduğunda yapılır; Codex kabulü Claude kabulü yerine sayılmaz.
+
+**Kabul:** Her meslek için örnek görev, kontrol listesi ve ayrı DWG/PDF hazırlanır. Geometri, native ölçü değerleri, katman/çizgi tipleri/kalınlıklar, antet, görünüş düzeni ve basılı çıktı değerlendirilir. Modelin çizim hatası ile MCP'nin işlemi uygulama hatası ayrı kaydedilir.
+
+### Faz 8 — Türkçe/İngilizce ve uygulama ayrıntıları
+
+Uygulamaya kalıcı **TR/EN dil seçimi** eklenir. Sekmeler, düğmeler, durum/hata mesajları, AutoCAD bağlantı adımları, Claude/Codex rehberleri ve skill açıklamaları iki dilde sunulur. Komut ve dosya yolu gibi teknik değerler çevrilmez; mevcut bağlantı ayarları dil değişiminde korunur.
+
+Mesleğe göre yardım, antet/çizgi/ölçü profili açıklamaları, örnek görevler ve hangi özelliklerin desteklendiği uygulamada ayrıntılandırılır. Ayrıntı ekranlarının kesin kapsamı uygulama aşamasında netleştirilir. İki dilde kurulum/bağlantı/skill seçimi, yeniden açılınca dilin korunması, uzun metinler, klavye ve farklı pencere boyutları test edilir.
+
+Bu özellikler geriye uyumlu teslim edildiğinde **1.1.0 adayı** olabilir; geliştirme ve kabul bitmeden sürüm/yayın kararı verilmez. Bugünkü 1.0.0 paketi değişmedi.
