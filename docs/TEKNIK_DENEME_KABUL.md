@@ -392,3 +392,18 @@ Ayrı temiz Windows/VM, gerçek reboot ve başlangıç kaydı, Explorer restart/
 UI testleri yayımlanmış normal1.0.0 EXE üzerinde yapıldı. Hata enjekte eden ARX yalnız `build/phase6-fault-tests` altında tutuldu; yayın paketine veya kullanıcı AutoCAD eklenti klasörüne taşınmadı. Mevcut normal ARX338/338, restart23/23 ve kurulum28/28 sonuçları önceki bölümdeki kabuldür; bu turda yeniden çalıştırılmış gibi sunulmaz. Kişisel Windows başlangıç kaydı, AutoCAD güvenlik ayarları ve global AI istemci ayarları değiştirilmedi. Yalnız testin oluşturduğu süreçler kapatıldı.
 
 **Açık kalan kabul:** Tepsi sağ tık menüsü otomasyon aracında taskbar hedefi bulunamadığından doğrulanamadı; minimum pencere boyutuna yönelik sürüklemeler boyutu değiştirmedi, kabul sayılmadı. Gerçek reboot/Windows başlangıcı/Explorer restart, farklı DPI/ekran okuyucu, ayrı temiz Windows/VM,24 saat credential yenileme beklemesi, güvenilir kod imzası, canlı Claude ve Mac çalıştırılmadı. Bu yerel kabul Faz6'nın bütün yayın/cihaz kapılarının kapandığı anlamına gelmez. Yalnız kabul belgeleri değiştiği için ürün sürümü1.0.0 korundu; yeni release üretilmedi.
+
+## 17. Faz 7 Ö1 — A1–A3: ISO profil, leader ve sembol motoru
+
+2026-10-21, Windows AutoCAD 2027 Core Console, izole profil, stok `acadiso.dwt` sentetik kopyaları. Kullanıcı Ö1 listesini ([MAKINE_NATIVE_ARAC_LISTESI.md](MAKINE_NATIVE_ARAC_LISTESI.md)) onayladı; uygulama yönetici tarafından yapıldı.
+
+| Kontrol | Sonuç |
+|---|---|
+| Ortak | `npm run check` temiz; `npm test` **49/49**; CTest **2/2**; `npm run catalog` **54 araç**/3 resource |
+| Yeni canlı paket (test derlemesi, sembol motoru dahil) | `test/standards-windows.ts` **53/53**: ISO profil (katman kalınlıkları, çizgi deseni 12d/3d ve 24d/3d/nokta, isocp.shx, ölçü stili, tekrar kurulum reddi ve revizyon korunumu); ok/nokta/uçsuz leader, sağ/sol referans çizgisi, `above`/`after` metin, blok içerik ve nitelik, bilinmeyen nitelik/blok reddi, taşıma; sembol bloğu üretimi/yeniden kullanımı/imza ve yabancı aynı adlı blok reddi; A4 PDF; kaydet–yeniden aç. Kanıt `tmp/phase5-runs/78527471-fe29-4bfe-bac7-b5ddce039975/results.json` |
+| Normal derleme tam regresyon | 12 paket: önceki 11 paket **338/338** değişmeden + yeni paket **42/42** (normal derlemede sembol kancası yoktur, atlandı). Kanıt `tmp/phase5-regressions/ed4fcbb6-7e56-4d36-b23f-394a7f829fb3/results.json` |
+| PDF görsel denetim | `pypdfium2` ile 600 dpi işlendi: gizli/eksen/hayali çizgiler ISO desenleriyle, kalın/ince ayrımı, isocp yazılı ölçü, referans çizgisi üstünde metin, nokta/ok uçları ve blok/sembol bağlantıları doğru |
+
+Geliştirmede bulunup düzeltilen hatalar: katman açıklaması veritabanına eklenmeden yazılınca `eNullObjectPointer`; `AcDmUtil::globalArrowName` dönüşünün serbest bırakılması AutoCAD'i çökertti (ok adı artık blok kaydından okunur); yerleşik ok bloğu adı `_Dot` biçimindedir; MLEADER içeriğe bağlanırken fazladan köşe ekliyordu (içerik bağlantı noktası referans çizgisi sonuna hizalanır, fazladan köşe kaldırılır ve okunarak doğrulanır).
+
+**Çalıştırılmadı / sınırlar:** ISO tam metinleri olmadan ölçü oranları AutoCAD ISO-25 stiline, çizgi elemanları `acadiso.lin` çapraz kontrolüne dayanır ve sonuç `pending_full_text` bildirir. Görünür masaüstü AutoCAD, hata enjeksiyonu (Faz 3) ve kurulum paketi testleri bu değişiklikle tekrarlanmadı; yeni sürüm paketi üretilmedi. Mac çalıştırılmadı.
