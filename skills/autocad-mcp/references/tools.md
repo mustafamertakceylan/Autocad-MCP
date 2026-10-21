@@ -1,6 +1,6 @@
 # AutoCAD MCP contract
 
-The development Windows 2027 plugin exposes 52 tools. A running older plugin can support fewer; get_capabilities is authoritative for the paired instance. The server uses stdio and fixed public skill resources; no HTTP port is required. Strict input schemas are listed by MCP tools/list and exported in docs/TOOL_CATALOG.json. Output schemas are still generic objects; interpret the fields below.
+The development Windows 2027 plugin exposes 54 tools. A running older plugin can support fewer; get_capabilities is authoritative for the paired instance. The server uses stdio and fixed public skill resources; no HTTP port is required. Strict input schemas are listed by MCP tools/list and exported in docs/TOOL_CATALOG.json. Output schemas are still generic objects; interpret the fields below.
 
 Installed Windows previews pin the native source build identity in both the pairing grant and IPC handshake. VERSION_MISMATCH is terminal before a CAD request is sent: restart AutoCAD with the matching installed plugin, explicitly pair its new grant and restart the MCP client transport. Do not bypass the mismatch by editing a pairing file or retrying mutations. Source-checkout development servers can still use historical protocol-compatible test builds; they are not installed distribution acceptance.
 
@@ -20,7 +20,7 @@ A native rejection before commit/confirmed rollback has applied=false. Verificat
 
 - acad_list_instances, acad_get_status, acad_get_capabilities, acad_list_documents, acad_get_document_info.
 - acad_query_entities: bounded filter/projection/cursor; cursor is bound to target, revision and exact request. Unsupported projected fields appear in unavailableFields. Max1000 returned/10000 scanned and a response budget apply.
-- acad_get_entity: one explicit reference. Supported types: LINE/CIRCLE/ARC/LWPOLYLINE/3DSOLID/TEXT/MTEXT/DIMENSION/INSERT/HATCH/REGION/TABLE/FCF.
+- acad_get_entity: one explicit reference. Supported types: LINE/CIRCLE/ARC/LWPOLYLINE/3DSOLID/TEXT/MTEXT/DIMENSION/INSERT/HATCH/REGION/TABLE/FCF/MLEADER.
 - acad_list_layers, acad_list_styles: bounded metadata; dependent=true denotes external-xref-managed symbols.
 - acad_get_block: local named non-layout/non-xref/non-anonymous definition. Max132 definition objects.
 - acad_get_bom: explicit INSERTs, max100; group by block name and up to8 explicit attribute tags. Does not expand nested blocks.
@@ -43,6 +43,8 @@ A native rejection before commit/confirmed rollback has applied=false. Verificat
 - acad_drill_holes: max64 explicit cylindrical/counterbore/countersink holes along +/-Z. Every hole must remove material; no thread or standard fastener inference.
 - acad_create_shaft: max32 explicit coaxial length/diameter segments along +Z, no persistent design constraints.
 - acad_section_solid, acad_create_hatch, acad_create_table, acad_create_feature_control_frame: native REGION/HATCH/TABLE/FCF. No ISO certification or engineering selection is implied.
+- acad_setup_drawing_standard: once per drawing, before drafting. Creates prefixed ISO layers/linetypes/lettering/dimension style atomically; any existing name rejects the whole profile. Reports the numeric basis and verification=pending_full_text.
+- acad_create_leader: native MLEADER with explicit vertices, terminator arrow/dot/none, optional reference line and none/text/block content. Reads back vertices, terminator, landing, content and contentConnection (the point where content joins the reference line).
 
 ## Paper, files and batches
 

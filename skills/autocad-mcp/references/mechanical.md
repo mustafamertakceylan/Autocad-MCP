@@ -1,6 +1,12 @@
 # Mechanical drafting and modeling
 
-Use actual capabilities from the selected plugin; the Windows development catalog has 52 tools. Claude has not been live tested. Mac, surfaces/meshes, sheet-metal unfolding, gear/spring design and manufacturing certification remain outside the verified subset.
+Use actual capabilities from the selected plugin; the Windows development catalog has 54 tools. Claude has not been live tested. Mac, surfaces/meshes, sheet-metal unfolding, gear/spring design and manufacturing certification remain outside the verified subset.
+
+## ISO drawing profile
+
+Start a new ISO mechanical drawing with acad_setup_drawing_standard (standard=ISO). Choose lineGroup from the sheet size and density of detail (thick/thin pairs 0.25/0.13 up to 1.0/0.5), lettering height h (1.8-20 mm), decimal separator and precision; viewScale is the intended paper:model ratio so lettering and arrows have the right paper size. It creates PREFIX-VISIBLE (thick 01.2), THIN, HIDDEN (02.1), CENTER and CUTTING-PLANE (04.1), PHANTOM (05.1), DIMENSION, HATCH, TEXT and SYMBOL layers, ISO linetypes in paper millimetres, an isocp.shx lettering style and PREFIX-ISO129 dimension style, and sets PSLTSCALE=1. Put each entity on the layer of its line type; do not override layer lineweights per entity. Dimension proportions follow AutoCAD's ISO-25 style and the profile reports verification=pending_full_text: say so instead of claiming ISO certification. Existing names are never overwritten; choose another prefix if needed.
+
+Use acad_create_leader for notes and symbol attachments. ISO practice: arrowhead where the leader ends on an outline, dot where it ends inside an outline, no terminator where it ends on a dimension line. The first vertex is the terminator point; the last vertex starts the horizontal reference line. Text placement "above" puts the note on the reference line. Block content (including future generated symbol blocks) connects at its insertion point at the end of the reference line.
 
 ## Measured drawings
 
