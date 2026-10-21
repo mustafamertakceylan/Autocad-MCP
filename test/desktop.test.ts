@@ -8,6 +8,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { bindDesktop, configureDesktopWorkspace, DesktopBridgeClient, desktopClientCount, desktopWrite } from '../src/desktop-state.js';
 import { DesktopManager, desktopHostFiles } from '../src/desktop-agent.js';
 import { mockPlugin, cleanupFixture } from './fixture.js';
+import { toolNames } from '../src/tools.js';
 
 const tick = () => new Promise(ok => setTimeout(ok, 15));
 async function controller(folder: string) {
@@ -20,7 +21,7 @@ test('desktop routing reconnects an existing MCP transport without rewriting con
     const workspace = join(one.folder, 'workspace'); await configureDesktopWorkspace(root, workspace);
     const configFile = join(workspace, 'claude/.mcp.json'), configText = await readFile(configFile, 'utf8'), config = JSON.parse(configText).mcpServers.autocad;
     await client.connect(new StdioClientTransport({ command: config.command, args: config.args, stderr: 'pipe' }));
-    assert.equal((await client.listTools()).tools.length, 52);
+    assert.equal((await client.listTools()).tools.length, toolNames.length);
     assert.deepEqual((await client.callTool({ name: 'acad_list_instances', arguments: {} })).structuredContent, { instances: [] });
     for (let i = 0; i < 100 && await desktopClientCount(root) !== 1; i++) await tick();
     assert.equal(await desktopClientCount(root), 1, 'Only initialized MCP clients count as connected');

@@ -69,7 +69,7 @@ try {
     check(path + ' matches packaged canonical skill', sha256(await readFile(join(workspace, path))) === sha256(await readFile(join(server, 'skills/autocad-mcp/SKILL.md'))));
   }
   const diagnostics = await run(node, [pilot, 'doctor', '--session-file', join(workspace, 'autocad-session.json')], { cwd: root, env, windowsHide: true, timeout: 20000 });
-  const health = JSON.parse(diagnostics.stdout); check('installed doctor reaches actual AutoCAD with all 52 tools', health.connected && health.backend === 'objectarx' && health.simulation === false && health.toolCount === 52);
+  const health = JSON.parse(diagnostics.stdout); check('installed doctor reaches actual AutoCAD with all catalog tools', health.connected && health.backend === 'objectarx' && health.simulation === false && health.toolCount === toolNames.length);
   client = new Client({ name: 'installed-package-acceptance', version: '0.1.0' });
   await client.connect(new StdioClientTransport({ command: config.mcpServers.autocad.command, args: config.mcpServers.autocad.args, cwd: root, env, stderr: 'pipe' }));
   check('bundled Node serves official MCP stdio outside repository cwd with restricted PATH', (await client.listTools()).tools.length === toolNames.length);

@@ -8,6 +8,7 @@ import { DesktopManager } from '../src/desktop-agent.js';
 import { configureDesktopWorkspace, desktopBindingSchema, desktopClientCount, desktopRead } from '../src/desktop-state.js';
 import { sha256 } from '../src/distribution.js';
 import { windowsSession } from './windows-session.js';
+import { toolNames } from '../src/tools.js';
 
 if(process.env.AUTOCAD_MCP_DESKTOP_TEST!=='1')throw Error('Explicit desktop native acceptance required');
 const id=randomUUID(), root=resolve('tmp/phase5-runs',id), evidence=resolve('tmp/desktop-runs',id);await mkdir(root,{recursive:true});await mkdir(evidence,{recursive:true});
@@ -22,7 +23,7 @@ try{
  await manager.initialize();await configureDesktopWorkspace(state,workspace);
  const configText=await readFile(join(workspace,'claude/.mcp.json'),'utf8'),config=JSON.parse(configText).mcpServers.autocad;
  client=new Client({name:'desktop-native-acceptance',version:'0.1.0'});await client.connect(new StdioClientTransport({command:config.command,args:config.args,stderr:'pipe'}));
- check('MCP client initializes while AutoCAD is absent',(await client.listTools()).tools.length===52&&(await client.listResources()).resources.length===3);
+ check('MCP client initializes while AutoCAD is absent',(await client.listTools()).tools.length===toolNames.length&&(await client.listResources()).resources.length===3);
  for(let i=0;i<100&&await desktopClientCount(state)!==1;i++)await new Promise(ok=>setTimeout(ok,30));check('real initialized MCP client is counted',await desktopClientCount(state)===1);
  check('offline state never reports native connection',(await manager.snapshot()).connected===false);
  const connect=async({processId}:{processId:number})=>{
@@ -31,7 +32,7 @@ try{
   const host=hosts.find(h=>h.processId===processId);assert.ok(host,'New explicit AutoCAD process must be discoverable');
   check('plugin load publishes local management without MCPSTART',host.bridgeStarted===false&&host.compatible);
   const before=await manager.snapshot();if(!before.connected)check('discovery alone does not silently bind an AutoCAD instance',before.selectedInstanceId===null);
-  const connected=await manager.connect(host.hostId);check('one-click management starts and authenticates actual ObjectARX',connected.connected&&connected.toolCount===52&&connected.documentCount===1);
+  const connected=await manager.connect(host.hostId);check('one-click management starts and authenticates actual ObjectARX',connected.connected&&connected.toolCount===toolNames.length&&connected.documentCount===1);
   return (await desktopRead(join(state,'binding.json'),desktopBindingSchema)).grantFile!;
  };
  first=await windowsSession(join(root,'first'),drawing,{units:4,module,runtimeRoot,desktopOnly:true,prepareBridge:connect});

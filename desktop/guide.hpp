@@ -12,7 +12,7 @@ std::vector<Step> steps() {
         {L"Kurulumu yap", L"AutoCAD kapalıyken, indirdiğin paketteki install.cmd dosyasını çalıştır."},
         {L"AutoCAD 2027'yi aç", L"Tam AutoCAD sürümünde yeni bir çizim aç. AutoCAD LT desteklenmez."},
         {L"Oturumunu bağla", L"Bağlantı sekmesine dön, AutoCAD oturumunu seç ve AutoCAD'e bağlan'a bas."},
-        {L"Hazır olduğunu gör", L"AutoCAD'e bağlı ve 52 araç göründüğünde MCP bağlantısı adımına geç."}
+        {L"Hazır olduğunu gör", L"AutoCAD'e bağlı ve araç sayısı göründüğünde MCP bağlantısı adımına geç."}
     };
     if (manual()) return {
         {L"Yerel MCP sunucusu ekle", client == 0 ? L"Codex'te Ayarlar > MCP sunucuları > Sunucu ekle. Ad: autocad; tür: STDIO." : L"İstemcinin MCP ayarlarından yeni bir yerel / STDIO sunucusu ekle. Adı: autocad."},
