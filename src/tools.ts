@@ -10,8 +10,8 @@ const geom = { coordinateSystem: z.literal('WCS'), lengthUnit: unit };
 const mutation = { ...target, operationId: id, expectedRevision: integer };
 const entityRef = z.strictObject({ documentId: id, documentEpoch: integer.min(1), handle: z.string().regex(/^[0-9a-fA-F]{1,16}$/) });
 const targets = z.array(entityRef).min(1).max(100);
-const entityType = z.enum(['LINE', 'CIRCLE', '3DSOLID', 'TEXT', 'MTEXT', 'DIMENSION', 'ARC', 'LWPOLYLINE', 'INSERT','HATCH','REGION','TABLE','FCF']);
-const projection = z.array(z.enum(['handle', 'type', 'layer', 'start', 'end', 'center', 'radius', 'size', 'extents', 'volume', 'text', 'position', 'height', 'width', 'rotation', 'dimensionKind', 'measurement', 'displayValue', 'dimensionScale', 'textPosition', 'linePoint', 'textHeight', 'arrowSize', 'precision', 'tolerance', 'leaderLength', 'style', 'vertices', 'bulges', 'closed', 'length', 'area', 'startAngle', 'endAngle', 'blockName', 'scale', 'attributes', 'attributeGeometry','pattern','patternScale','patternAngle','loopCount','rows','columnWidths','rowHeights','externalReference'])).min(1).max(64);
+const entityType = z.enum(['LINE', 'CIRCLE', '3DSOLID', 'TEXT', 'MTEXT', 'DIMENSION', 'ARC', 'LWPOLYLINE', 'INSERT','HATCH','REGION','TABLE','FCF','MLEADER']);
+const projection = z.array(z.enum(['handle', 'type', 'layer', 'start', 'end', 'center', 'radius', 'size', 'extents', 'volume', 'text', 'position', 'height', 'width', 'rotation', 'dimensionKind', 'measurement', 'displayValue', 'dimensionScale', 'textPosition', 'linePoint', 'textHeight', 'arrowSize', 'precision', 'tolerance', 'leaderLength', 'style', 'vertices', 'bulges', 'closed', 'length', 'area', 'startAngle', 'endAngle', 'blockName', 'scale', 'attributes', 'attributeGeometry','pattern','patternScale','patternAngle','loopCount','rows','columnWidths','rowHeights','externalReference','leaderLineCount','terminator','terminatorSize','landingLength','landingDirection','contentKind','symbol','contentConnection'])).min(1).max(64);
 const readGeom = { coordinateSystem: z.literal('WCS'), lengthUnit: unit.default('drawing_unit'), projection: projection.optional() };
 const layer = z.string().min(1).max(255).optional();
 const xy = point.refine(p => p[2] === 0, 'Only WCS XY annotation is supported');
@@ -26,6 +26,12 @@ const batchStep=z.discriminatedUnion('tool',[
  z.strictObject({tool:z.literal('acad_create_circle'),center:xy,radius:z.number().positive().finite(),layer}),
  z.strictObject({tool:z.literal('acad_create_box'),center:point,size:point,layer}).refine(p=>p.size.every(n=>n>0)),
  z.strictObject({tool:z.literal('acad_create_polyline'),vertices:z.array(xy).min(2).max(512),closed:z.boolean(),layer}).refine(p=>!p.closed||p.vertices.length>=3).refine(p=>p.vertices.every((v,i)=>i===0||v.some((n,a)=>n!==p.vertices[i-1]![a]))).refine(p=>!p.closed||p.vertices[0]!.some((n,a)=>n!==p.vertices.at(-1)![a]))
+]);
+
+const leaderContent=z.discriminatedUnion('kind',[
+ z.strictObject({kind:z.literal('none')}),
+ z.strictObject({kind:z.literal('text'),text:plainText,height:z.number().positive().finite(),style:layerName.optional(),placement:z.enum(['above','after'])}),
+ z.strictObject({kind:z.literal('block'),name:layerName,scale:z.number().positive().finite().default(1),attributes:attributeValues.default({})})
 ]);
 
 export const toolSchemas = {
@@ -101,12 +107,14 @@ export const toolSchemas = {
     z.strictObject({...mutation,...geom,targets:z.array(entityRef).length(2),kind:z.literal('chamfer'),distanceA:z.number().positive().finite(),distanceB:z.number().positive().finite(),trim:z.boolean().default(true)})
   ]),
   acad_erase_entities: z.strictObject({ ...mutation, targets }),
+  acad_setup_drawing_standard: z.strictObject({...mutation,standard:z.literal('ISO'),lineGroup:z.literal([0.25,0.35,0.5,0.7,1]),textHeight:z.literal([1.8,2.5,3.5,5,7,10,14,20]),decimalSeparator:z.enum(['comma','point']),precision:z.number().int().min(0).max(4),viewScale:z.number().positive().finite().default(1),prefix:z.string().regex(/^[A-Z][A-Z0-9]{0,11}$/).default('ISO')}),
+  acad_create_leader: z.strictObject({...mutation,...geom,vertices:z.array(xy).min(2).max(16),terminator:z.enum(['arrow','dot','none']),terminatorSize:z.number().positive().finite(),landingLength:z.number().nonnegative().finite(),landingDirection:z.enum(['left','right']),content:leaderContent,layer}).refine(p=>p.vertices.every((v,i)=>i===0||v.some((n,a)=>n!==p.vertices[i-1]![a])),'Consecutive leader vertices must differ'),
   acad_get_operation_status: z.strictObject({ ...target, operationId: id }),
   acad_save_copy: z.strictObject({ ...mutation, outputRootId: id, relativePath: z.string().min(1).max(4096), overwrite: z.literal(false) })
 };
 export type ToolName = keyof typeof toolSchemas;
 export const toolNames = Object.keys(toolSchemas) as ToolName[];
-export const mutating = new Set<ToolName>(['acad_set_view','acad_run_batch','acad_attach_xref','acad_manage_xref','acad_create_layout','acad_export_pdf','acad_drill_holes','acad_create_shaft','acad_create_feature_control_frame','acad_section_solid','acad_create_hatch','acad_create_table','acad_extrude','acad_revolve','acad_boolean','acad_create_line', 'acad_create_circle', 'acad_create_arc', 'acad_create_polyline', 'acad_create_box', 'acad_create_layer', 'acad_create_style', 'acad_define_block', 'acad_insert_block', 'acad_set_attributes', 'acad_create_text', 'acad_create_mtext', 'acad_create_dimension', 'acad_move_entities', 'acad_transform_entities', 'acad_offset_entity', 'acad_edit_curve', 'acad_corner', 'acad_erase_entities', 'acad_save_copy']);
+export const mutating = new Set<ToolName>(['acad_setup_drawing_standard','acad_create_leader','acad_set_view','acad_run_batch','acad_attach_xref','acad_manage_xref','acad_create_layout','acad_export_pdf','acad_drill_holes','acad_create_shaft','acad_create_feature_control_frame','acad_section_solid','acad_create_hatch','acad_create_table','acad_extrude','acad_revolve','acad_boolean','acad_create_line', 'acad_create_circle', 'acad_create_arc', 'acad_create_polyline', 'acad_create_box', 'acad_create_layer', 'acad_create_style', 'acad_define_block', 'acad_insert_block', 'acad_set_attributes', 'acad_create_text', 'acad_create_mtext', 'acad_create_dimension', 'acad_move_entities', 'acad_transform_entities', 'acad_offset_entity', 'acad_edit_curve', 'acad_corner', 'acad_erase_entities', 'acad_save_copy']);
 export const descriptions: Record<ToolName, string> = {
   acad_list_instances: 'List explicitly paired local AutoCAD instances. No active-tab fallback.',
   acad_get_status: 'Read bridge/backend status; simulated backends are identified explicitly.',
@@ -158,6 +166,8 @@ export const descriptions: Record<ToolName, string> = {
   acad_edit_curve: 'Trim a planar curve against explicit boundaries and retain the segment nearest keepPoint, replacing the source atomically; or extend only a LINE start/end to the nearest forward boundary intersection. Boundaries are never changed.',
   acad_corner: 'Fillet or chamfer exactly two WCS XY LINE segments sharing one endpoint; no implicit extension. Radius or both distances must fit inside segments. Optionally trim original endpoints in the same transaction.',
   acad_erase_entities: 'Erase explicit modelspace entities in one transaction.',
+  acad_setup_drawing_standard: 'Create an ISO drawing profile in one transaction: ISO 3098 lettering style (isocp.shx), ISO 128-2 thin dashed/long-dash dotted/long-dash double-dotted linetypes for the chosen line group, ten prefixed layers (visible, thin, hidden, center, cutting plane, phantom, dimension, hatch, text, symbol) with thick/thin/lettering lineweights, an ISO dimension style and PSLTSCALE=1. lineGroup is the thick width in mm (thin is half); textHeight is paper mm; viewScale is paper-mm/model-mm (1 means 1:1). Existing names are rejected, nothing is overwritten. The result lists the basis of every numeric choice and reports verification pending the full ISO text.',
+  acad_create_leader: 'Create one native MLEADER: straight leader through explicit WCS XY vertices (first = terminator point on the feature, last = start of the reference line), ISO terminator arrow/dot/none with explicit size, optional horizontal reference line (landingLength 0 disables it) and none/plain text/local block content. Text placement above sits on the reference line; after continues it. Block content connects at its base point at the end of the reference line; only existing non-constant attribute tags can be set. Vertices, terminator, landing and content are read back.',
   acad_get_operation_status: 'Reconcile an operation after timeout. Missing records do not prove no effect.',
   acad_save_copy: 'Write a new authorized DWG copy without replacing existing files or renaming the source.'
 };

@@ -2,7 +2,7 @@
   "bridgeVersion": "0.1.0",
   "transport": "stdio",
   "platform": "Windows AutoCAD 2027",
-  "toolCount": 52,
+  "toolCount": 54,
   "tools": [
     {
       "name": "acad_list_instances",
@@ -2344,7 +2344,15 @@
                 "rows",
                 "columnWidths",
                 "rowHeights",
-                "externalReference"
+                "externalReference",
+                "leaderLineCount",
+                "terminator",
+                "terminatorSize",
+                "landingLength",
+                "landingDirection",
+                "contentKind",
+                "symbol",
+                "contentConnection"
               ]
             }
           },
@@ -2366,7 +2374,8 @@
                   "HATCH",
                   "REGION",
                   "TABLE",
-                  "FCF"
+                  "FCF",
+                  "MLEADER"
                 ]
               },
               "layer": {
@@ -2503,7 +2512,15 @@
                 "rows",
                 "columnWidths",
                 "rowHeights",
-                "externalReference"
+                "externalReference",
+                "leaderLineCount",
+                "terminator",
+                "terminatorSize",
+                "landingLength",
+                "landingDirection",
+                "contentKind",
+                "symbol",
+                "contentConnection"
               ]
             }
           },
@@ -5231,6 +5248,303 @@
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "acad_setup_drawing_standard",
+      "description": "Create an ISO drawing profile in one transaction: ISO 3098 lettering style (isocp.shx), ISO 128-2 thin dashed/long-dash dotted/long-dash double-dotted linetypes for the chosen line group, ten prefixed layers (visible, thin, hidden, center, cutting plane, phantom, dimension, hatch, text, symbol) with thick/thin/lettering lineweights, an ISO dimension style and PSLTSCALE=1. lineGroup is the thick width in mm (thin is half); textHeight is paper mm; viewScale is paper-mm/model-mm (1 means 1:1). Existing names are rejected, nothing is overwritten. The result lists the basis of every numeric choice and reports verification pending the full ISO text.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentEpoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "standard": {
+            "type": "string",
+            "const": "ISO"
+          },
+          "lineGroup": {
+            "type": "number",
+            "enum": [
+              0.25,
+              0.35,
+              0.5,
+              0.7,
+              1
+            ]
+          },
+          "textHeight": {
+            "type": "number",
+            "enum": [
+              1.8,
+              2.5,
+              3.5,
+              5,
+              7,
+              10,
+              14,
+              20
+            ]
+          },
+          "decimalSeparator": {
+            "type": "string",
+            "enum": [
+              "comma",
+              "point"
+            ]
+          },
+          "precision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "viewScale": {
+            "default": 1,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "prefix": {
+            "default": "ISO",
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{0,11}$"
+          }
+        },
+        "required": [
+          "instanceId",
+          "documentId",
+          "documentEpoch",
+          "operationId",
+          "expectedRevision",
+          "standard",
+          "lineGroup",
+          "textHeight",
+          "decimalSeparator",
+          "precision"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {}
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "acad_create_leader",
+      "description": "Create one native MLEADER: straight leader through explicit WCS XY vertices (first = terminator point on the feature, last = start of the reference line), ISO terminator arrow/dot/none with explicit size, optional horizontal reference line (landingLength 0 disables it) and none/plain text/local block content. Text placement above sits on the reference line; after continues it. Block content connects at its base point at the end of the reference line; only existing non-constant attribute tags can be set. Vertices, terminator, landing and content are read back.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentEpoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "coordinateSystem": {
+            "type": "string",
+            "const": "WCS"
+          },
+          "lengthUnit": {
+            "type": "string",
+            "enum": [
+              "mm",
+              "m",
+              "inch",
+              "drawing_unit"
+            ]
+          },
+          "vertices": {
+            "minItems": 2,
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "terminator": {
+            "type": "string",
+            "enum": [
+              "arrow",
+              "dot",
+              "none"
+            ]
+          },
+          "terminatorSize": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "landingLength": {
+            "type": "number",
+            "minimum": 0
+          },
+          "landingDirection": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ]
+          },
+          "content": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "text",
+                  "block"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              },
+              "height": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "style": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "placement": {
+                "type": "string",
+                "enum": [
+                  "above",
+                  "after"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "scale": {
+                "default": 1,
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "attributes": {
+                "default": {},
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false,
+            "description": "Fields depend on the discriminator; include only fields of the selected variant. The original strict per-variant schema is enforced at execution. kind=none: require no additional required fields; kind=text: require text, height, placement; kind=block: require name"
+          },
+          "layer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "instanceId",
+          "documentId",
+          "documentEpoch",
+          "operationId",
+          "expectedRevision",
+          "coordinateSystem",
+          "lengthUnit",
+          "vertices",
+          "terminator",
+          "terminatorSize",
+          "landingLength",
+          "landingDirection",
+          "content"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {}
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
         "idempotentHint": false,
         "openWorldHint": false
       }
