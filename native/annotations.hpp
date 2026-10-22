@@ -32,7 +32,8 @@ std::string annotation_type(AcDbEntity *e) {
     if (AcDbText::cast(e)) return "TEXT";
     if (AcDbMText::cast(e)) return "MTEXT";
     if (AcDbRotatedDimension::cast(e) || AcDbAlignedDimension::cast(e) ||
-        AcDbDiametricDimension::cast(e) || AcDbRadialDimension::cast(e)) return "DIMENSION";
+        AcDbDiametricDimension::cast(e) || AcDbRadialDimension::cast(e) || AcDb2LineAngularDimension::cast(e) ||
+        AcDb3PointAngularDimension::cast(e) || AcDbArcDimension::cast(e) || AcDbOrdinateDimension::cast(e)) return "DIMENSION";
     return {};
 }
 json annotation_geometry(AcDbEntity *e, double f) {
@@ -49,10 +50,17 @@ json annotation_geometry(AcDbEntity *e, double f) {
     }
     if (auto d = AcDbDimension::cast(e); d && annotation_type(e) == "DIMENSION") {
         double measured = 0; cad(d->measurement(measured));
-        out = {{"measurement",measured*f},{"displayValue",measured*d->dimlfac()},
+        // Angles are radians (displayed in degrees); every other kind is a length.
+        const bool angular = AcDb2LineAngularDimension::cast(d) || AcDb3PointAngularDimension::cast(d);
+        AcString override_text; cad(d->dimensionText(override_text));
+        out = {{"measurement",angular?measured:measured*f},{"displayValue",angular?measured*180/3.141592653589793:measured*d->dimlfac()},
+               {"measurementUnit",angular?"rad":"length"},
                {"dimensionScale",d->dimlfac()},{"textPosition",xyz(d->textPosition(),f)},
-               {"textHeight",d->dimtxt()*f},{"arrowSize",d->dimasz()*f},{"precision",d->dimdec()},
-               {"tolerance",d->dimtol()?json{{"lower",-d->dimtm()},{"upper",d->dimtp()}}:json(nullptr)}, {"style",symbol_name(d->dimensionStyle())}};
+               {"textHeight",d->dimtxt()*f},{"arrowSize",d->dimasz()*f},{"precision",angular?d->dimadec():d->dimdec()},
+               {"tolerance",d->dimtol()||d->dimlim()?json{{"lower",-d->dimtm()},{"upper",d->dimtp()}}:json(nullptr)}, {"style",symbol_name(d->dimensionStyle())},
+               {"decimalSeparator",std::string(1,static_cast<char>(d->dimdsep()))},{"dimensionText",utf8(override_text.kACharPtr())},{"basic",d->dimgap()<0},{"limits",static_cast<bool>(d->dimlim())},
+               {"trailingZeros",(d->dimzin()&8)||(d->dimtzin()&8)?"suppressed":"kept"},{"tolerancePrecision",d->dimtdec()},
+               {"suppressed",d->dimsd1()&&d->dimse1()?json("first"):d->dimsd2()&&d->dimse2()?json("second"):json(nullptr)}};
         if (auto linear = AcDbRotatedDimension::cast(d)) {
             out["dimensionKind"]="linear"; out["start"]=xyz(linear->xLine1Point(),f);
             out["end"]=xyz(linear->xLine2Point(),f); out["linePoint"]=xyz(linear->dimLinePoint(),f); out["rotation"]=linear->rotation();
@@ -65,6 +73,18 @@ json annotation_geometry(AcDbEntity *e, double f) {
         } else if (auto radial = AcDbRadialDimension::cast(d)) {
             out["dimensionKind"]="radius";out["start"]=xyz(radial->center(),f);
             out["end"]=xyz(radial->chordPoint(),f);out["leaderLength"]=radial->leaderLength()*f;
+        } else if (auto two = AcDb2LineAngularDimension::cast(d)) {
+            out["dimensionKind"]="angular";out["start"]=xyz(two->xLine1Start(),f);out["end"]=xyz(two->xLine1End(),f);
+            out["start2"]=xyz(two->xLine2Start(),f);out["end2"]=xyz(two->xLine2End(),f);out["linePoint"]=xyz(two->arcPoint(),f);
+        } else if (auto three = AcDb3PointAngularDimension::cast(d)) {
+            out["dimensionKind"]="angular3";out["center"]=xyz(three->centerPoint(),f);out["start"]=xyz(three->xLine1Point(),f);
+            out["end"]=xyz(three->xLine2Point(),f);out["linePoint"]=xyz(three->arcPoint(),f);
+        } else if (auto arc = AcDbArcDimension::cast(d)) {
+            out["dimensionKind"]="arc_length";out["center"]=xyz(arc->centerPoint(),f);out["start"]=xyz(arc->xLine1Point(),f);
+            out["end"]=xyz(arc->xLine2Point(),f);out["linePoint"]=xyz(arc->arcPoint(),f);
+        } else if (auto ordinate = AcDbOrdinateDimension::cast(d)) {
+            out["dimensionKind"]="ordinate";out["axis"]=ordinate->isUsingXAxis()?"x":"y";out["origin"]=xyz(ordinate->origin(),f);
+            out["start"]=xyz(ordinate->definingPoint(),f);out["end"]=xyz(ordinate->leaderEndPoint(),f);
         }
     }
     return out;
@@ -79,8 +99,27 @@ std::unique_ptr<AcDbEntity> make_annotation(AcDbDatabase *db, const std::string 
         return std::make_unique<AcDbMText>();
     }
     const auto kind = text(p,"kind");
-    auto a=point(p,"start",f), b=point(p,"end",f), line=point(p,"linePoint",f);
-    need(a.z==0 && b.z==0 && line.z==0 && a.distanceTo(b)>1e-12);
+    auto a=point(p,"start",f), b=point(p,"end",f);
+    need(a.z==0 && b.z==0 && a.distanceTo(b)>1e-12);
+    if (kind=="ordinate") {
+        const auto axis=text(p,"axis");need(axis=="x"||axis=="y");
+        auto origin=p.contains("origin")?point(p,"origin",f):AcGePoint3d::kOrigin;need(origin.z==0);
+        auto d=std::make_unique<AcDbOrdinateDimension>(axis=="x",a,b,nullptr,db->dimstyle());cad(d->setOrigin(origin));return d;
+    }
+    auto line=point(p,"linePoint",f);need(line.z==0);
+    if (kind=="angular") {
+        auto c=point(p,"start2",f),e=point(p,"end2",f);need(c.z==0&&e.z==0&&c.distanceTo(e)>1e-12);
+        need(!(b-a).isParallelTo(e-c),"VALIDATION_FAILED","Angular dimension lines must not be parallel");
+        return std::make_unique<AcDb2LineAngularDimension>(a,b,c,e,line,nullptr,db->dimstyle());
+    }
+    if (kind=="angular3"||kind=="arc_length") {
+        auto center=point(p,"center",f);need(center.z==0&&center.distanceTo(a)>1e-12&&center.distanceTo(b)>1e-12);
+        if (kind=="arc_length") {
+            need(std::abs(center.distanceTo(a)-center.distanceTo(b))<=std::max(1e-9,center.distanceTo(a)*1e-9),"VALIDATION_FAILED","Arc length end points must lie on one circle");
+            return std::make_unique<AcDbArcDimension>(center,a,b,line,nullptr,db->dimstyle());
+        }
+        return std::make_unique<AcDb3PointAngularDimension>(center,a,b,line,nullptr,db->dimstyle());
+    }
     double leader=annotation_number(p,"leaderLength")*f; need(leader>=0 && std::isfinite(leader));
     if (kind=="linear") {
         auto angle=annotation_number(p,"rotation");
@@ -90,6 +129,71 @@ std::unique_ptr<AcDbEntity> make_annotation(AcDbDatabase *db, const std::string 
     if (kind=="aligned") return std::make_unique<AcDbAlignedDimension>(a,b,line,nullptr,db->dimstyle());
     if (kind=="diameter") return std::make_unique<AcDbDiametricDimension>(a,b,leader,nullptr,db->dimstyle());
     need(kind=="radius");return std::make_unique<AcDbRadialDimension>(a,b,leader,nullptr,db->dimstyle());
+}
+// Dimension text template. "<>" is AutoCAD's live measured value: notation only
+// adds ISO symbols around the real measurement and can never replace it.
+// Written values keep the decimals the user wrote: "11" and "11,00" state
+// different precision, so digits are never added or dropped; only the decimal
+// separator follows the drawing. Signed values are tolerance deviations.
+std::string written(const json &p, const char *key, bool signed_value = false) {
+    const auto value = text(p, key);
+    need(std::regex_match(value, std::regex(signed_value ? "0([.,]0{1,4})?|[+-][0-9]{1,3}([.,][0-9]{1,4})?" : "[0-9]{1,4}([.,][0-9]{1,4})?")),
+         "VALIDATION_FAILED", "Values are written decimals such as 11, 11,00 or +0,021");
+    return value;
+}
+double written_value(const json &p, const char *key, bool signed_value = false) {
+    auto value = written(p, key, signed_value);
+    for (auto &c : value) if (c == ',') c = '.';
+    return std::stod(value);
+}
+std::string written_text(const json &p, const char *key, wchar_t separator, bool signed_value = false) {
+    auto value = written(p, key, signed_value);
+    for (auto &c : value) if (c == '.' || c == ',') c = static_cast<char>(separator);
+    return value;
+}
+std::string dimension_override(const json &n, wchar_t separator, const std::string &dimensionKind) {
+    need(n.is_object());
+    for (auto it = n.begin(); it != n.end(); ++it)
+        need(std::set<std::string>{"kind","prefix","count","fit","fitDeviations","limits","singleLimit","sizeModifiers","suppress"}.contains(it.key()));
+    const auto kind = n.value("kind", std::string("normal"));
+    need(kind == "normal" || kind == "theoretical_exact" || kind == "reference" || kind == "not_to_scale");
+    std::string out;
+    if (n.contains("count")) {need(n.at("count").is_number_unsigned() && n.at("count").get<std::uint64_t>() >= 2 && n.at("count").get<std::uint64_t>() <= 999);out += std::to_string(n.at("count").get<std::uint64_t>()) + "× ";}
+    if (n.contains("prefix")) {
+        // Diameter/radius/sphere per ISO 129-1; the square symbol is gdt.shx "o".
+        static const std::map<std::string, std::string> prefixes = {{"diameter", "%%c"}, {"radius", "R"}, {"spherical_diameter", "S%%c"},
+                                                                    {"spherical_radius", "SR"}, {"square", "{\\Fgdt;o}"}, {"thickness", "t="}};
+        const auto prefix = text(n, "prefix");need(prefixes.contains(prefix));
+        // Diameter and radius dimensions already render Ø/R inside "<>"; only the sphere S is added.
+        if (dimensionKind == "diameter") {
+            need(prefix == "diameter" || prefix == "spherical_diameter", "VALIDATION_FAILED", "Diameter dimensions take only a diameter or spherical diameter prefix");
+            if (prefix == "spherical_diameter") out += "S";
+        } else if (dimensionKind == "radius") {
+            need(prefix == "radius" || prefix == "spherical_radius", "VALIDATION_FAILED", "Radius dimensions take only a radius or spherical radius prefix");
+            if (prefix == "spherical_radius") out += "S";
+        } else out += prefixes.at(prefix);
+    }
+    out += "<>";
+    if (n.contains("fit")) {
+        // ISO 286 tolerance class: hole (upper case) or shaft (lower case) letters + IT grade, or a fit hole/shaft.
+        need(std::regex_match(text(n, "fit"), std::regex("([A-Z]{1,2}(01|[0-9]|1[0-8])(/[a-z]{1,2}(01|[0-9]|1[0-8]))?)|([a-z]{1,2}(01|[0-9]|1[0-8]))")));
+        out += text(n, "fit");
+        if (n.contains("fitDeviations")) {
+            const auto &v = n.at("fitDeviations");need(v.is_object() && v.size() == 2);
+            need(written_value(v, "upper", true) >= written_value(v, "lower", true));
+            out += "(\\S" + written_text(v, "upper", separator, true) + "^" + written_text(v, "lower", separator, true) + ";)";
+        }
+    } else need(!n.contains("fitDeviations"));
+    if (n.contains("singleLimit")) {const auto limit = text(n, "singleLimit");need(limit == "min" || limit == "max");out += " " + limit;}
+    if (n.contains("sizeModifiers")) {
+        // ISO 14405-1 specification modifiers; E is the circled envelope requirement.
+        static const std::set<std::string> codes = {"E","LP","LS","GG","GX","GN","GC","CC","CA","CV","SX","SN","SA","SM","SD","SR","SQ","ACS","SCS","CT"};
+        need(n.at("sizeModifiers").is_array() && n.at("sizeModifiers").size() <= 4);
+        for (const auto &code : n.at("sizeModifiers")) {need(code.is_string() && codes.contains(code.get<std::string>()));out += code == "E" ? " Ⓔ" :" " + code.get<std::string>();}
+    }
+    if (kind == "reference") out = "(" + out + ")";
+    if (kind == "not_to_scale") out = "\\L" + out + "\\l";
+    return out == "<>" ? std::string() : out;
 }
 void configure_annotation(AcDbEntity *e, AcDbDatabase *db, const json &p, double f) {
     if (auto t=AcDbText::cast(e)) {
@@ -113,8 +217,19 @@ void configure_annotation(AcDbEntity *e, AcDbDatabase *db, const json &p, double
         cad(d->setDimscale(1));cad(d->setDimlfac(1/f));cad(d->setDimlunit(2));cad(d->setDimdec(static_cast<int>(precision)));
         cad(d->setDimtxt(h));cad(d->setDimasz(arrow));cad(d->setDimgap(h*0.4));
         cad(d->setDimexo(h*0.25));cad(d->setDimexe(h*0.5));cad(d->setDimlim(false));
-        cad(d->setDimalt(false));cad(d->setDimrnd(0));cad(d->setDimensionText(L""));
-        cad(d->setDimtol(p.contains("tolerance")));cad(d->setDimtdec(static_cast<int>(precision)));
+        cad(d->setDimalt(false));cad(d->setDimrnd(0));
+        cad(d->setDimaunit(0));cad(d->setDimadec(static_cast<int>(precision)));
+        const auto notation=p.value("notation",json::object());
+        cad(d->setDimensionText(wide(dimension_override(notation,d->dimdsep(),text(p,"kind"))).c_str()));
+        if(notation.value("kind",std::string("normal"))=="theoretical_exact")cad(d->setDimgap(-h*0.4));
+        const auto suppress=notation.value("suppress",std::string("none"));need(suppress=="none"||suppress=="first"||suppress=="second");
+        cad(d->setDimsd1(suppress=="first"));cad(d->setDimse1(suppress=="first"));cad(d->setDimsd2(suppress=="second"));cad(d->setDimse2(suppress=="second"));
+        const bool limits=notation.value("limits",false);need(!limits||p.contains("tolerance"),"VALIDATION_FAILED","Limit dimensions need explicit deviations");
+        cad(d->setDimtol(p.contains("tolerance")&&!limits));cad(d->setDimlim(limits));
+        // Displayed decimals are the stated precision: zeros are never dropped
+        // (11,00 is not 11). Deviations may state their own precision.
+        const auto tolerancePrecision=p.contains("tolerancePrecision")?number(p,"tolerancePrecision"):precision;need(tolerancePrecision<=8);
+        cad(d->setDimtdec(static_cast<int>(tolerancePrecision)));cad(d->setDimzin(0));cad(d->setDimtzin(0));
         if(p.contains("tolerance")) {
             const auto &v=p.at("tolerance");need(v.is_object() && v.size()==2 && v.contains("lower") && v.contains("upper"));
             auto lower=annotation_number(v,"lower"),upper=annotation_number(v,"upper");need(lower<=0 && upper>=0);
@@ -140,10 +255,35 @@ bool verify_annotation(const std::string &method, const json &p, const json &aft
             std::abs(std::remainder(a.at("rotation").get<double>()-annotation_number(p,"rotation"),2*3.141592653589793))<1e-9;
         return ok && (method!="acad_create_mtext" || std::abs(a.at("width").get<double>()-annotation_number(p,"width"))<=t);
     }
-    auto start=point(p,"start"),end=point(p,"end");
-    double expected=text(p,"kind")=="linear"?std::abs((end.x-start.x)*std::cos(annotation_number(p,"rotation"))+(end.y-start.y)*std::sin(annotation_number(p,"rotation"))):start.distanceTo(end);
-    return a.at("dimensionKind")==p.at("kind") && annotation_close(a.at("start"),p.at("start"),t) && annotation_close(a.at("end"),p.at("end"),t) &&
-        std::abs(a.at("measurement").get<double>()-expected)<=t && std::abs(a.at("displayValue").get<double>()-expected)<=t &&
+    const auto kind=text(p,"kind");auto start=point(p,"start"),end=point(p,"end");
+    const double pi=3.141592653589793,measured=a.at("measurement").get<double>();
+    std::vector<double> candidates;double valueTolerance=t;
+    if(kind=="linear")candidates={std::abs((end.x-start.x)*std::cos(annotation_number(p,"rotation"))+(end.y-start.y)*std::sin(annotation_number(p,"rotation")))};
+    else if(kind=="aligned"||kind=="diameter"||kind=="radius")candidates={start.distanceTo(end)};
+    else if(kind=="ordinate"){auto origin=p.contains("origin")?point(p,"origin"):AcGePoint3d::kOrigin;candidates={std::abs(text(p,"axis")=="x"?start.x-origin.x:start.y-origin.y)};}
+    else if(kind=="angular"){const double theta=(end-start).angleTo(point(p,"end2")-point(p,"start2"));candidates={theta,pi-theta};valueTolerance=1e-9;}
+    else{auto center=point(p,"center");const double theta=(start-center).angleTo(end-center);
+        if(kind=="angular3"){candidates={theta,2*pi-theta};valueTolerance=1e-9;}
+        else{const double r=center.distanceTo(start);candidates={r*theta,r*(2*pi-theta)};}}
+    bool value=false;for(double c:candidates)value|=std::abs(measured-c)<=valueTolerance;
+    const bool angular=kind=="angular"||kind=="angular3";
+    if(angular&&std::abs(a.at("displayValue").get<double>()-measured*180/pi)>1e-7)return false;
+    if(!angular&&std::abs(a.at("displayValue").get<double>()-measured)>t)return false;
+    for(const auto &field:{"start2","end2","center","origin"})
+        if(p.contains(field)&&a.contains(field)&&!annotation_close(a.at(field),p.at(field),t))return false;
+    // AutoCAD normalises dimension-line points: linear ones along the line, arc
+    // points along their arc. Only the arc radius around a known center is kept.
+    if(p.contains("center")&&a.contains("linePoint")){
+        auto center=point(p,"center"),requested=point(p,"linePoint"),actual=point(a,"linePoint");
+        if(std::abs(center.distanceTo(actual)-center.distanceTo(requested))>t)return false;
+    }
+    const auto notation=p.value("notation",json::object());
+    const auto separator=a.at("decimalSeparator").get<std::string>();
+    if(a.at("dimensionText")!=dimension_override(notation,static_cast<wchar_t>(separator.empty()?'.':separator[0]),kind)||
+       a.at("basic")!=(notation.value("kind",std::string("normal"))=="theoretical_exact")||a.at("limits")!=notation.value("limits",false)||a.at("trailingZeros")!="kept"||
+       (p.contains("tolerancePrecision")&&a.at("tolerancePrecision")!=p.at("tolerancePrecision"))||
+       a.at("suppressed")!=(notation.value("suppress",std::string("none"))=="none"?json(nullptr):notation.at("suppress")))return false;
+    return value && a.at("dimensionKind")==p.at("kind") && annotation_close(a.at("start"),p.at("start"),t) && annotation_close(a.at("end"),p.at("end"),t) &&
         ((p.contains("style")&&!p.contains("textHeight"))||std::abs(a.at("textHeight").get<double>()-annotation_number(p,"textHeight",2.5))<=t) &&
         ((p.contains("style")&&!p.contains("arrowSize"))||std::abs(a.at("arrowSize").get<double>()-annotation_number(p,"arrowSize",2.5))<=t) &&
         ((p.contains("style")&&!p.contains("precision"))||a.at("precision")==p.value("precision",2)) && a.at("tolerance")==p.value("tolerance",json(nullptr));

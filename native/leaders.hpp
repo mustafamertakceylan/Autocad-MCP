@@ -38,7 +38,7 @@ json leader_geometry(AcDbEntity *e, double f) {
     if (kind == AcDbMLeaderStyle::kMTextContent) {
         std::unique_ptr<AcDbMText> mt(ml->mtext());need(mt != nullptr, "EXECUTION_FAILED", "Leader text unavailable");
         AcString value;cad(mt->text(value));AcGePoint3d at;cad(ml->getTextLocation(at));
-        out["contentKind"] = "text";out["text"] = annotation_newlines(utf8(value.kACharPtr()));out["textHeight"] = ml->textHeight() * f;
+        out["contentKind"] = "text";out["text"] = annotation_newlines(utf8(value.kACharPtr()));AcString raw;cad(mt->contents(raw));out["formattedText"] = utf8(raw.kACharPtr());out["textHeight"] = ml->textHeight() * f;
         out["position"] = xyz(at, f);out["style"] = symbol_name(ml->textStyleId());
     } else if (kind == AcDbMLeaderStyle::kBlockContent) {
         AcGePoint3d at;cad(ml->getBlockPosition(at));const auto scale = ml->blockScale();
@@ -59,7 +59,9 @@ json leader_geometry(AcDbEntity *e, double f) {
     } else out["contentKind"] = "none";
     return out;
 }
-json create_leader(AcDbDatabase *db, const json &p) {
+// formatted: internal callers (hole callouts) pass prebuilt MText with symbol
+// font switches; MCP text content is always escaped plain text.
+json create_leader(AcDbDatabase *db, const json &p, const std::string *formatted = nullptr) {
     auto &s = state(db);need(s.revision == number(p, "expectedRevision"), "STALE_REVISION", "Drawing changed before leader creation");
     const double f = input_factor(db, p), out = output_factor(db, p);
     need(p.contains("vertices") && p.at("vertices").is_array() && p.at("vertices").size() >= 2 && p.at("vertices").size() <= 16);
@@ -87,6 +89,7 @@ json create_leader(AcDbDatabase *db, const json &p) {
         const auto value = annotation_plain(content, true), placement = text(content, "placement");need(placement == "above" || placement == "after");
         const double height = annotation_number(content, "height") * f;need(height > 0 && std::isfinite(height));
         std::string escaped;for (char c : value) {if (c == '\n') escaped += "\\P";else {if (c == '\\' || c == '{' || c == '}') escaped += '\\';escaped += c;}}
+        if (formatted) escaped = *formatted;
         const auto style = content.contains("style") ? named_symbol(db->textStyleTableId(), text(content, "style")) : db->textstyle();
         AcDbMText mt;mt.setDatabaseDefaults(db);cad(mt.setTextStyle(style));cad(mt.setTextHeight(height));mt.setContents(wide(escaped).c_str());
         cad(mt.setLocation(landingEnd));
@@ -161,7 +164,8 @@ json create_leader(AcDbDatabase *db, const json &p) {
         if (kind != "none" && landing > 0)
             need(!expected.at("contentConnection").is_null() && close(expected.at("contentConnection"), landingEnd), "VERIFICATION_FAILED",
                  ("Leader content is not joined at the end of the reference line: " + expected.at("contentConnection").dump()).c_str());
-        if (kind == "text") need(expected.at("text") == expectedText, "VERIFICATION_FAILED", "Leader text differs before commit");
+        if (kind == "text" && formatted) need(expected.at("formattedText") == *formatted, "VERIFICATION_FAILED", "Leader callout differs before commit");
+        else if (kind == "text") need(expected.at("text") == expectedText, "VERIFICATION_FAILED", "Leader text differs before commit");
         if (kind == "block") need(expected.at("attributes") == expectedAttributes, "VERIFICATION_FAILED", "Leader attributes differ before commit");
         result["created"].push_back(ref(db, e));test_fault("abort_before_commit");check_cancel();tx.commit();s.writing = false;s.revision++;cursors.clear();
     } catch (...) {s.writing = false;throw;}

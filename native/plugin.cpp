@@ -112,7 +112,7 @@ bool mutation(const std::string &method) {
            method == "acad_create_mtext" || method == "acad_create_dimension" ||
            method == "acad_create_arc" || method == "acad_create_polyline" || method == "acad_transform_entities" ||
            method=="acad_offset_entity" || method=="acad_edit_curve" || method=="acad_corner" ||
-           method=="acad_define_block" || method=="acad_insert_block" || method=="acad_set_attributes" || method=="acad_extrude" || method=="acad_revolve" || method=="acad_boolean" || method=="acad_section_solid" || method=="acad_create_hatch" || method=="acad_create_table" || method=="acad_drill_holes" || method=="acad_create_shaft" || method=="acad_create_feature_control_frame" || method=="acad_create_layout" || method=="acad_export_pdf" || method=="acad_attach_xref" || method=="acad_manage_xref" || method=="acad_run_batch" || method=="acad_set_view" || method=="acad_setup_drawing_standard" || method=="acad_create_leader";
+           method=="acad_define_block" || method=="acad_insert_block" || method=="acad_set_attributes" || method=="acad_extrude" || method=="acad_revolve" || method=="acad_boolean" || method=="acad_section_solid" || method=="acad_create_hatch" || method=="acad_create_table" || method=="acad_drill_holes" || method=="acad_create_shaft" || method=="acad_create_feature_control_frame" || method=="acad_create_layout" || method=="acad_export_pdf" || method=="acad_attach_xref" || method=="acad_manage_xref" || method=="acad_run_batch" || method=="acad_set_view" || method=="acad_setup_drawing_standard" || method=="acad_create_leader" || method=="acad_create_dimension_series" || method=="acad_create_hole_callout";
 }
 
 struct DocState {
@@ -208,7 +208,7 @@ const std::vector<std::string> names = {
     "acad_get_operation_status", "acad_save_copy", "acad_list_layers", "acad_create_layer",
     "acad_create_text", "acad_create_mtext", "acad_create_dimension", "acad_list_styles", "acad_create_style",
     "acad_create_arc", "acad_create_polyline", "acad_transform_entities", "acad_offset_entity", "acad_edit_curve", "acad_corner",
-    "acad_get_block", "acad_define_block", "acad_insert_block", "acad_set_attributes", "acad_extrude", "acad_revolve", "acad_boolean", "acad_get_mass_properties", "acad_section_solid", "acad_create_hatch", "acad_create_table", "acad_get_bom", "acad_drill_holes", "acad_create_shaft", "acad_create_feature_control_frame", "acad_get_plot_devices", "acad_list_layouts", "acad_create_layout", "acad_export_pdf", "acad_list_xrefs", "acad_attach_xref", "acad_manage_xref", "acad_run_batch", "acad_get_view", "acad_set_view", "acad_setup_drawing_standard", "acad_create_leader"};
+    "acad_get_block", "acad_define_block", "acad_insert_block", "acad_set_attributes", "acad_extrude", "acad_revolve", "acad_boolean", "acad_get_mass_properties", "acad_section_solid", "acad_create_hatch", "acad_create_table", "acad_get_bom", "acad_drill_holes", "acad_create_shaft", "acad_create_feature_control_frame", "acad_get_plot_devices", "acad_list_layouts", "acad_create_layout", "acad_export_pdf", "acad_list_xrefs", "acad_attach_xref", "acad_manage_xref", "acad_run_batch", "acad_get_view", "acad_set_view", "acad_setup_drawing_standard", "acad_create_leader", "acad_create_dimension_series", "acad_create_hole_callout"};
 
 json identity(AcDbDatabase *db) {
     auto &s = state(db);
@@ -428,7 +428,9 @@ void validate(const std::string &method, const json &p) {
         {"acad_create_layer", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "name", "colorIndex", "lineweight", "linetype"}},
         {"acad_create_text", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "position", "text", "height", "rotation", "layer", "style"}},
         {"acad_create_mtext", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "position", "text", "height", "width", "rotation", "layer", "style"}},
-        {"acad_create_dimension", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "kind", "start", "end", "linePoint", "rotation", "leaderLength", "textHeight", "arrowSize", "precision", "tolerance", "layer", "style"}},
+        {"acad_create_dimension", {"instanceId", "documentId", "documentEpoch", "expectedRevision", "operationId", "coordinateSystem", "lengthUnit", "kind", "start", "end", "linePoint", "rotation", "leaderLength", "textHeight", "arrowSize", "precision", "tolerance", "layer", "style", "start2", "end2", "center", "axis", "origin", "notation", "tolerancePrecision"}},
+        {"acad_create_dimension_series", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","mode","points","rotation","linePoint","spacing","textHeight","arrowSize","precision","style","layer"}},
+        {"acad_create_hole_callout", {"instanceId","documentId","documentEpoch","expectedRevision","operationId","coordinateSystem","lengthUnit","vertices","terminator","terminatorSize","landingLength","landingDirection","textHeight","style","layer","decimalSeparator","hole","circle"}},
         {"acad_query_entities",
          {"instanceId", "documentId", "documentEpoch", "coordinateSystem", "lengthUnit", "projection",
           "filter", "limit", "cursor"}},
@@ -514,7 +516,7 @@ void validate(const std::string &method, const json &p) {
         number(p, "expectedRevision");
     if (method == "acad_get_entity" || method == "acad_query_entities" || method == "acad_create_line" ||
         method == "acad_create_circle" || method == "acad_create_box" || method == "acad_move_entities" ||
-        method == "acad_create_text" || method == "acad_create_mtext" || method == "acad_create_dimension" || method == "acad_create_arc" || method == "acad_create_polyline" || method == "acad_transform_entities" || method=="acad_offset_entity" || method=="acad_edit_curve" || method=="acad_corner" || method=="acad_get_block" || method=="acad_define_block" || method=="acad_insert_block" || method=="acad_extrude" || method=="acad_revolve" || method=="acad_boolean" || method=="acad_get_mass_properties" || method=="acad_section_solid" || method=="acad_create_hatch" || method=="acad_create_table" || method=="acad_drill_holes" || method=="acad_create_shaft" || method=="acad_create_feature_control_frame" || method=="acad_create_layout" || method=="acad_attach_xref" || method=="acad_run_batch" || method=="acad_get_view" || method=="acad_set_view" || method=="acad_create_leader")
+        method == "acad_create_text" || method == "acad_create_mtext" || method == "acad_create_dimension" || method == "acad_create_arc" || method == "acad_create_polyline" || method == "acad_transform_entities" || method=="acad_offset_entity" || method=="acad_edit_curve" || method=="acad_corner" || method=="acad_get_block" || method=="acad_define_block" || method=="acad_insert_block" || method=="acad_extrude" || method=="acad_revolve" || method=="acad_boolean" || method=="acad_get_mass_properties" || method=="acad_section_solid" || method=="acad_create_hatch" || method=="acad_create_table" || method=="acad_drill_holes" || method=="acad_create_shaft" || method=="acad_create_feature_control_frame" || method=="acad_create_layout" || method=="acad_attach_xref" || method=="acad_run_batch" || method=="acad_get_view" || method=="acad_set_view" || method=="acad_create_leader" || method=="acad_create_dimension_series" || method=="acad_create_hole_callout")
         need(text(p, "coordinateSystem") == "WCS");
     if (p.contains("projection")) {
         need(p.at("projection").is_array() && p.at("projection").size() > 0 &&
@@ -525,7 +527,7 @@ void validate(const std::string &method, const json &p) {
             auto f = field.get<std::string>();
             need(std::set<std::string>{"handle", "type", "layer", "start", "end", "center", "radius", "size",
                                        "extents", "volume", "text", "position", "height", "width", "rotation",
-                                       "dimensionKind", "measurement", "displayValue", "dimensionScale", "textPosition", "linePoint", "textHeight", "arrowSize", "precision", "tolerance", "leaderLength", "style", "vertices", "bulges", "closed", "length", "area", "startAngle", "endAngle", "blockName", "scale", "attributes", "attributeGeometry", "pattern", "patternScale", "patternAngle", "loopCount", "rows", "columnWidths", "rowHeights", "externalReference", "leaderLineCount", "terminator", "terminatorSize", "landingLength", "landingDirection", "contentKind", "symbol", "contentConnection"}
+                                       "dimensionKind", "measurement", "displayValue", "dimensionScale", "textPosition", "linePoint", "textHeight", "arrowSize", "precision", "tolerance", "leaderLength", "style", "vertices", "bulges", "closed", "length", "area", "startAngle", "endAngle", "blockName", "scale", "attributes", "attributeGeometry", "pattern", "patternScale", "patternAngle", "loopCount", "rows", "columnWidths", "rowHeights", "externalReference", "leaderLineCount", "terminator", "terminatorSize", "landingLength", "landingDirection", "contentKind", "symbol", "contentConnection", "dimensionText", "basic", "limits", "suppressed", "decimalSeparator", "measurementUnit", "start2", "end2", "axis", "origin", "formattedText", "trailingZeros", "tolerancePrecision"}
                      .contains(f) &&
                  found.insert(f).second);
         }
@@ -767,6 +769,7 @@ bool same_geometry(const json &a,const json &b);
 #include "symbols.hpp"
 #include "leaders.hpp"
 #include "standards.hpp"
+#include "dimensions.hpp"
 
 json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
     auto &s = state(db);
@@ -907,11 +910,11 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
         throw;
     }
     result["revision"] = s.revision;
+    json values = json::array();
     try {
         test_fault("verify_after_commit");
         test_fault("delay_after_commit");
         Transaction read(db);
-        json values = json::array();
         const double out = method == "acad_erase_entities" ? 1 : output_factor(db, p);
         for (auto id : verify) {
             AcDbEntity *entity = nullptr;
@@ -937,6 +940,11 @@ json mutate(AcDbDatabase *db, const std::string &method, const json &p) {
         result["error"] = {{"code", "VERIFICATION_FAILED"},
                            {"message", "Committed changes could not be verified"},
                            {"retryable", false}};
+        // Report what was actually read so the caller can see the committed state.
+        if (!values.empty())
+            result["observedGeometry"] = {{"items", values},
+                                          {"lengthUnit", p.value("lengthUnit", std::string("drawing_unit"))},
+                                          {"coordinateSystem", "WCS"}};
     }
     return result;
 }
@@ -1512,7 +1520,7 @@ json execute(const json &request) {
         need(!context.doc->isReadOnly(), "DOC_READ_ONLY", "Drawing is read only");
         json result;
         try {
-            result = method=="acad_setup_drawing_standard"?setup_drawing_standard(db,p):method=="acad_create_leader"?create_leader(db,p):method=="acad_set_view"?set_view(db,p):method=="acad_run_batch"?run_batch(db,p):(method=="acad_attach_xref"||method=="acad_manage_xref")?edit_xrefs(db,method,p):method=="acad_create_layout"?create_layout(db,p):method=="acad_export_pdf"?export_pdf(db,p):method == "acad_save_copy" ? save_copy(db, p) : method == "acad_create_layer" ? create_layer(db, p) : method == "acad_create_style" ? create_style(db, p) : method == "acad_transform_entities" ? transform_entities(db,p) :
+            result = method=="acad_setup_drawing_standard"?setup_drawing_standard(db,p):method=="acad_create_leader"?create_leader(db,p):method=="acad_create_dimension_series"?create_dimension_series(db,p):method=="acad_create_hole_callout"?create_hole_callout(db,p):method=="acad_set_view"?set_view(db,p):method=="acad_run_batch"?run_batch(db,p):(method=="acad_attach_xref"||method=="acad_manage_xref")?edit_xrefs(db,method,p):method=="acad_create_layout"?create_layout(db,p):method=="acad_export_pdf"?export_pdf(db,p):method == "acad_save_copy" ? save_copy(db, p) : method == "acad_create_layer" ? create_layer(db, p) : method == "acad_create_style" ? create_style(db, p) : method == "acad_transform_entities" ? transform_entities(db,p) :
                 (method=="acad_offset_entity"||method=="acad_edit_curve"||method=="acad_corner")?edit_curves(db,method,p):
                 (method=="acad_define_block"||method=="acad_insert_block"||method=="acad_set_attributes")?edit_blocks(db,method,p):
                 (method=="acad_extrude"||method=="acad_revolve"||method=="acad_boolean"||method=="acad_drill_holes"||method=="acad_create_shaft")?edit_solids(db,method,p):

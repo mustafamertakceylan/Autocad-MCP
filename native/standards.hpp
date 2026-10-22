@@ -116,7 +116,9 @@ json setup_drawing_standard(AcDbDatabase *db, const json &p) {
         cad(dim->setDimtxsty(textStyleId));cad(dim->setDimtxt(height));cad(dim->setDimasz(height));cad(dim->setDimgap(height * 0.25));
         cad(dim->setDimexo(height * 0.25));cad(dim->setDimexe(height * 0.5));cad(dim->setDimtad(1));cad(dim->setDimjust(0));
         cad(dim->setDimtih(false));cad(dim->setDimtoh(false));cad(dim->setDimtofl(true));cad(dim->setDimlunit(2));
-        cad(dim->setDimdec(static_cast<int>(precision)));cad(dim->setDimtdec(static_cast<int>(precision)));cad(dim->setDimzin(8));cad(dim->setDimtzin(8));
+        cad(dim->setDimdec(static_cast<int>(precision)));cad(dim->setDimtdec(static_cast<int>(precision)));
+        // Written decimals state the required precision (11 vs 11,00), so trailing zeros are always kept.
+        cad(dim->setDimzin(0));cad(dim->setDimtzin(0));
         cad(dim->setDimdsep(separator == "comma" ? L',' : L'.'));cad(dim->setDimscale(1));
         cad(dim->setDimlfac(1 / input_factor(db, json{{"lengthUnit", "mm"}})));cad(dim->setDimtol(false));cad(dim->setDimlim(false));
         add(db->dimStyleTableId(), dim.release());

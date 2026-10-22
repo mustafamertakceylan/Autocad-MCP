@@ -7,7 +7,7 @@ import {randomUUID} from 'node:crypto';
 if(process.platform!=='win32'||process.env.AUTOCAD_MCP_PHASE5_TEST!=='1')throw Error('Explicit Windows native acceptance opt-in required');
 const root=resolve('tmp/phase5-regressions',randomUUID());await mkdir(root,{recursive:true});const run=promisify(execFile),suites:any[]=[];
 try{
- for(const name of ['annotations','geometry2d','curve-edits','blocks','solids','detailing','machining','plotting','xrefs','batch','views','standards']){
+ for(const name of ['annotations','geometry2d','curve-edits','blocks','solids','detailing','machining','plotting','xrefs','batch','views','standards','dimensions']){
   try{
    const result=await run(process.execPath,[resolve('dist/test/'+name+'-windows.js')],{windowsHide:true,maxBuffer:1024*1024});await writeFile(join(root,name+'.log'),result.stdout+result.stderr);
    const match=result.stdout.match(/Evidence: ([^\r\n]+)/);if(!match)throw Error('Missing suite evidence');const data=JSON.parse(await readFile(join(match[1]!,'results.json'),'utf8'));if(data.passed!==true)throw Error('Failed suite evidence');

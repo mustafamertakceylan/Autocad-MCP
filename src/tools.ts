@@ -11,7 +11,7 @@ const mutation = { ...target, operationId: id, expectedRevision: integer };
 const entityRef = z.strictObject({ documentId: id, documentEpoch: integer.min(1), handle: z.string().regex(/^[0-9a-fA-F]{1,16}$/) });
 const targets = z.array(entityRef).min(1).max(100);
 const entityType = z.enum(['LINE', 'CIRCLE', '3DSOLID', 'TEXT', 'MTEXT', 'DIMENSION', 'ARC', 'LWPOLYLINE', 'INSERT','HATCH','REGION','TABLE','FCF','MLEADER']);
-const projection = z.array(z.enum(['handle', 'type', 'layer', 'start', 'end', 'center', 'radius', 'size', 'extents', 'volume', 'text', 'position', 'height', 'width', 'rotation', 'dimensionKind', 'measurement', 'displayValue', 'dimensionScale', 'textPosition', 'linePoint', 'textHeight', 'arrowSize', 'precision', 'tolerance', 'leaderLength', 'style', 'vertices', 'bulges', 'closed', 'length', 'area', 'startAngle', 'endAngle', 'blockName', 'scale', 'attributes', 'attributeGeometry','pattern','patternScale','patternAngle','loopCount','rows','columnWidths','rowHeights','externalReference','leaderLineCount','terminator','terminatorSize','landingLength','landingDirection','contentKind','symbol','contentConnection'])).min(1).max(64);
+const projection = z.array(z.enum(['handle', 'type', 'layer', 'start', 'end', 'center', 'radius', 'size', 'extents', 'volume', 'text', 'position', 'height', 'width', 'rotation', 'dimensionKind', 'measurement', 'displayValue', 'dimensionScale', 'textPosition', 'linePoint', 'textHeight', 'arrowSize', 'precision', 'tolerance', 'leaderLength', 'style', 'vertices', 'bulges', 'closed', 'length', 'area', 'startAngle', 'endAngle', 'blockName', 'scale', 'attributes', 'attributeGeometry','pattern','patternScale','patternAngle','loopCount','rows','columnWidths','rowHeights','externalReference','leaderLineCount','terminator','terminatorSize','landingLength','landingDirection','contentKind','symbol','contentConnection','dimensionText','basic','limits','suppressed','decimalSeparator','measurementUnit','start2','end2','axis','origin','formattedText','trailingZeros','tolerancePrecision'])).min(1).max(64);
 const readGeom = { coordinateSystem: z.literal('WCS'), lengthUnit: unit.default('drawing_unit'), projection: projection.optional() };
 const layer = z.string().min(1).max(255).optional();
 const xy = point.refine(p => p[2] === 0, 'Only WCS XY annotation is supported');
@@ -33,6 +33,61 @@ const leaderContent=z.discriminatedUnion('kind',[
  z.strictObject({kind:z.literal('text'),text:plainText,height:z.number().positive().finite(),style:layerName.optional(),placement:z.enum(['above','after'])}),
  z.strictObject({kind:z.literal('block'),name:layerName,scale:z.number().positive().finite().default(1),attributes:attributeValues.default({})})
 ]);
+
+const tolerance=z.strictObject({lower:z.number().finite().nonpositive(),upper:z.number().finite().nonnegative()});
+// Written decimals keep the precision the user stated: "11" leaves the decimals free,
+// "11,00" requires the first two decimals to be zero. Digits are never added or dropped.
+const writtenNumber=(s:string)=>Number(s.replace(',','.'));
+const writtenSize=z.string().regex(/^[0-9]{1,4}([.,][0-9]{1,4})?$/,'Write the size as stated, e.g. 11 or 11,00').refine(s=>writtenNumber(s)>0,'Size must be positive');
+const writtenDeviation=z.string().regex(/^(0([.,]0{1,4})?|[+-][0-9]{1,3}([.,][0-9]{1,4})?)$/,'Write the deviation as stated, e.g. +0,021, -0,013 or 0');
+const holeFit=/^[A-Z]{1,2}(01|[0-9]|1[0-8])$/;
+// ISO 286 tolerance class (hole upper case / shaft lower case + IT grade) or a hole/shaft fit.
+const fitClass=/^(([A-Z]{1,2}(01|[0-9]|1[0-8])(\/[a-z]{1,2}(01|[0-9]|1[0-8]))?)|([a-z]{1,2}(01|[0-9]|1[0-8])))$/;
+const notation=z.strictObject({
+ kind:z.enum(['normal','theoretical_exact','reference','not_to_scale']).optional(),
+ prefix:z.enum(['diameter','radius','spherical_diameter','spherical_radius','square','thickness']).optional(),
+ count:z.number().int().min(2).max(999).optional(),
+ fit:z.string().regex(fitClass).optional(),
+ fitDeviations:z.strictObject({upper:writtenDeviation,lower:writtenDeviation}).refine(v=>writtenNumber(v.upper)>=writtenNumber(v.lower),'Upper deviation must not be below lower').optional(),
+ limits:z.boolean().optional(),
+ singleLimit:z.enum(['min','max']).optional(),
+ sizeModifiers:z.array(z.enum(['E','LP','LS','GG','GX','GN','GC','CC','CA','CV','SX','SN','SA','SM','SD','SR','SQ','ACS','SCS','CT'])).max(4).refine(a=>new Set(a).size===a.length,'Duplicate size modifier').optional(),
+ suppress:z.enum(['none','first','second']).optional()
+});
+const dimensionBase={...mutation,...geom,textHeight:z.number().positive().finite().optional(),arrowSize:z.number().positive().finite().optional(),precision:z.number().int().min(0).max(8).optional(),tolerance:tolerance.optional(),tolerancePrecision:z.number().int().min(0).max(8).optional(),layer,style:layerName.optional(),notation:notation.optional()};
+const differ=(a:number[],b:number[])=>a.some((n,i)=>n!==b[i]);
+const dimensionSchema=z.discriminatedUnion('kind',[
+ z.strictObject({...dimensionBase,kind:z.literal('linear'),start:xy,end:xy,linePoint:xy,rotation:z.number().finite().default(0)}).refine(p=>differ(p.start,p.end),'Dimension points must differ').refine(p=>Math.abs((p.end[0]-p.start[0])*Math.cos(p.rotation)+(p.end[1]-p.start[1])*Math.sin(p.rotation))>1e-9,'Linear dimension must have nonzero projected length'),
+ z.strictObject({...dimensionBase,kind:z.literal('aligned'),start:xy,end:xy,linePoint:xy}).refine(p=>differ(p.start,p.end),'Dimension points must differ'),
+ z.strictObject({...dimensionBase,kind:z.literal('diameter'),start:xy,end:xy,linePoint:xy,leaderLength:z.number().nonnegative().finite().default(0)}).refine(p=>differ(p.start,p.end),'Dimension points must differ'),
+ z.strictObject({...dimensionBase,kind:z.literal('radius'),start:xy,end:xy,linePoint:xy,leaderLength:z.number().nonnegative().finite().default(0)}).refine(p=>differ(p.start,p.end),'Dimension points must differ'),
+ z.strictObject({...dimensionBase,kind:z.literal('angular'),start:xy,end:xy,start2:xy,end2:xy,linePoint:xy}).refine(p=>differ(p.start,p.end)&&differ(p.start2,p.end2),'Angular dimension lines need two distinct points'),
+ z.strictObject({...dimensionBase,kind:z.literal('angular3'),center:xy,start:xy,end:xy,linePoint:xy}).refine(p=>differ(p.center,p.start)&&differ(p.center,p.end)&&differ(p.start,p.end),'Angle points must differ'),
+ z.strictObject({...dimensionBase,kind:z.literal('arc_length'),center:xy,start:xy,end:xy,linePoint:xy}).refine(p=>differ(p.center,p.start)&&differ(p.start,p.end),'Arc points must differ'),
+ z.strictObject({...dimensionBase,kind:z.literal('ordinate'),start:xy,end:xy,axis:z.enum(['x','y']),origin:xy.optional()}).refine(p=>differ(p.start,p.end),'Ordinate leader needs two points')
+]).superRefine((p,ctx)=>{
+ const n=p.notation??{},kind=n.kind??'normal',issue=(message:string)=>ctx.addIssue({code:'custom',message});
+ if(n.fit&&p.tolerance)issue('Give a fit with fitDeviations, not tolerance');
+ if(n.fitDeviations&&!n.fit)issue('fitDeviations require a fit');
+ if(n.limits&&!p.tolerance)issue('Limit dimensions need explicit tolerance deviations');
+ if(kind==='theoretical_exact'&&(p.tolerance||n.fit||n.limits||n.singleLimit||n.sizeModifiers))issue('Theoretically exact dimensions carry no tolerance');
+ if(kind==='reference'&&(p.tolerance||n.fit||n.limits))issue('Reference dimensions carry no tolerance');
+ if(n.singleLimit&&(p.tolerance||n.fit||n.limits))issue('A single limit replaces other tolerances');
+ if(n.suppress&&n.suppress!=='none'&&p.kind!=='linear'&&p.kind!=='aligned')issue('Half dimensions apply to linear or aligned dimensions');
+ if(['angular','angular3'].includes(p.kind)&&(n.prefix||n.fit||n.sizeModifiers))issue('Angular dimensions take no size prefix, fit or size modifier');
+ // AutoCAD already renders Ø for diameter and R for radius dimensions; only the sphere form adds S.
+ if(p.kind==='diameter'&&n.prefix&&!['diameter','spherical_diameter'].includes(n.prefix))issue('Diameter dimensions take only a diameter or spherical diameter prefix');
+ if(p.kind==='radius'&&n.prefix&&!['radius','spherical_radius'].includes(n.prefix))issue('Radius dimensions take only a radius or spherical radius prefix');
+});
+const holeSize=writtenSize;
+const holeCallout=z.strictObject({count:z.number().int().min(2).max(999).optional(),diameter:holeSize.optional(),fit:z.string().regex(holeFit).optional(),depth:holeSize.optional(),
+ thread:z.strictObject({designation:z.string().regex(/^M[0-9]{1,3}([.,][0-9]{1,2})?(x[0-9]{1,2}([.,][0-9]{1,2})?)?(-[0-9][A-Hfgh]{1,2})?(-LH)?$/),depth:holeSize.optional()}).optional(),
+ counterbore:z.strictObject({diameter:holeSize,depth:holeSize}).optional(),
+ countersink:z.strictObject({diameter:holeSize,angle:writtenSize.refine(s=>writtenNumber(s)<180,'Countersink angle must be below 180')}).optional()
+}).refine(h=>h.thread||h.diameter,'Hole diameter or thread is required').refine(h=>!(h.counterbore&&h.countersink),'Choose counterbore or countersink')
+ .refine(h=>!h.thread||!(h.counterbore||h.countersink||h.fit),'Threaded callouts take only the tap drill diameter and depth')
+ .refine(h=>!h.counterbore||(h.diameter!==undefined&&writtenNumber(h.counterbore.diameter)>writtenNumber(h.diameter)),'Counterbore must be wider than the hole')
+ .refine(h=>!h.countersink||(h.diameter!==undefined&&writtenNumber(h.countersink.diameter)>writtenNumber(h.diameter)),'Countersink must be wider than the hole');
 
 export const toolSchemas = {
   acad_list_instances: z.strictObject({}),
@@ -65,7 +120,7 @@ export const toolSchemas = {
   acad_create_layer: z.strictObject({ ...mutation, name: layerName, colorIndex: z.number().int().min(1).max(255), lineweight: z.number().int().refine(n=>weights.includes(n)).default(25), linetype:layerName.optional() }),
   acad_create_text: z.strictObject({ ...mutation, ...geom, position: xy, text: plainText.refine(s=>!/[\r\n\t]/.test(s)), height: z.number().positive().finite(), rotation: z.number().finite().default(0), layer, style: layerName.optional() }),
   acad_create_mtext: z.strictObject({ ...mutation, ...geom, position: xy, text: plainText, height: z.number().positive().finite(), width: z.number().positive().finite(), rotation: z.number().finite().default(0), layer, style: layerName.optional() }),
-  acad_create_dimension: z.strictObject({ ...mutation, ...geom, kind: z.enum(['linear','aligned','diameter','radius']), start: xy, end: xy, linePoint: xy, rotation: z.number().finite().default(0), leaderLength: z.number().nonnegative().finite().default(0), textHeight: z.number().positive().finite().optional(), arrowSize: z.number().positive().finite().optional(), precision: z.number().int().min(0).max(8).optional(), tolerance: z.strictObject({lower:z.number().finite().nonpositive(),upper:z.number().finite().nonnegative()}).optional(), layer, style: layerName.optional() }).refine(p => p.start.some((n,i)=>n!==p.end[i]), 'Dimension points must differ').refine(p => p.kind!=='linear'||Math.abs((p.end[0]-p.start[0])*Math.cos(p.rotation)+(p.end[1]-p.start[1])*Math.sin(p.rotation))>1e-9, 'Linear dimension must have nonzero projected length'),
+  acad_create_dimension: dimensionSchema,
   acad_query_entities: z.strictObject({ ...target, ...readGeom, filter: z.strictObject({ type: entityType.optional(), layer: z.string().min(1).max(255).optional() }), limit: integer.min(1).max(1000).default(100), cursor: z.string().min(1).max(4096).optional() }),
   acad_get_entity: z.strictObject({ ...target, ...readGeom, entityRef }),
   acad_create_line: z.strictObject({ ...mutation, ...geom, start: point, end: point, layer }).refine(x => x.start.some((n, i) => n !== x.end[i]), 'Line must have nonzero length'),
@@ -109,12 +164,17 @@ export const toolSchemas = {
   acad_erase_entities: z.strictObject({ ...mutation, targets }),
   acad_setup_drawing_standard: z.strictObject({...mutation,standard:z.literal('ISO'),lineGroup:z.literal([0.25,0.35,0.5,0.7,1]),textHeight:z.literal([1.8,2.5,3.5,5,7,10,14,20]),decimalSeparator:z.enum(['comma','point']),precision:z.number().int().min(0).max(4),viewScale:z.number().positive().finite().default(1),prefix:z.string().regex(/^[A-Z][A-Z0-9]{0,11}$/).default('ISO')}),
   acad_create_leader: z.strictObject({...mutation,...geom,vertices:z.array(xy).min(2).max(16),terminator:z.enum(['arrow','dot','none']),terminatorSize:z.number().positive().finite(),landingLength:z.number().nonnegative().finite(),landingDirection:z.enum(['left','right']),content:leaderContent,layer}).refine(p=>p.vertices.every((v,i)=>i===0||v.some((n,a)=>n!==p.vertices[i-1]![a])),'Consecutive leader vertices must differ'),
+  acad_create_dimension_series: z.strictObject({...mutation,...geom,mode:z.enum(['chain','baseline']),points:z.array(xy).min(2).max(33),rotation:z.number().finite().default(0),linePoint:xy,spacing:z.number().positive().finite().optional(),textHeight:z.number().positive().finite().optional(),arrowSize:z.number().positive().finite().optional(),precision:z.number().int().min(0).max(8).optional(),style:layerName.optional(),layer})
+   .refine(p=>(p.mode==='baseline')===(p.spacing!==undefined),'Baseline series require spacing; chain series take none')
+   .refine(p=>p.points.every((v,i)=>{if(i===0)return true;const o=p.mode==='chain'?p.points[i-1]!:p.points[0]!;return Math.abs((v[0]-o[0])*Math.cos(p.rotation)+(v[1]-o[1])*Math.sin(p.rotation))>1e-9;}),'Every dimension needs a nonzero projected length'),
+  acad_create_hole_callout: z.strictObject({...mutation,...geom,vertices:z.array(xy).min(2).max(16),terminator:z.enum(['arrow','dot','none']),terminatorSize:z.number().positive().finite(),landingLength:z.number().nonnegative().finite(),landingDirection:z.enum(['left','right']),textHeight:z.number().positive().finite(),style:layerName.optional(),layer,decimalSeparator:z.enum(['comma','point']),hole:holeCallout,circle:entityRef.optional()})
+   .refine(p=>p.vertices.every((v,i)=>i===0||differ(v,p.vertices[i-1]!)),'Consecutive leader vertices must differ').refine(p=>!p.circle||p.hole.diameter!==undefined,'A circle check needs the hole diameter'),
   acad_get_operation_status: z.strictObject({ ...target, operationId: id }),
   acad_save_copy: z.strictObject({ ...mutation, outputRootId: id, relativePath: z.string().min(1).max(4096), overwrite: z.literal(false) })
 };
 export type ToolName = keyof typeof toolSchemas;
 export const toolNames = Object.keys(toolSchemas) as ToolName[];
-export const mutating = new Set<ToolName>(['acad_setup_drawing_standard','acad_create_leader','acad_set_view','acad_run_batch','acad_attach_xref','acad_manage_xref','acad_create_layout','acad_export_pdf','acad_drill_holes','acad_create_shaft','acad_create_feature_control_frame','acad_section_solid','acad_create_hatch','acad_create_table','acad_extrude','acad_revolve','acad_boolean','acad_create_line', 'acad_create_circle', 'acad_create_arc', 'acad_create_polyline', 'acad_create_box', 'acad_create_layer', 'acad_create_style', 'acad_define_block', 'acad_insert_block', 'acad_set_attributes', 'acad_create_text', 'acad_create_mtext', 'acad_create_dimension', 'acad_move_entities', 'acad_transform_entities', 'acad_offset_entity', 'acad_edit_curve', 'acad_corner', 'acad_erase_entities', 'acad_save_copy']);
+export const mutating = new Set<ToolName>(['acad_create_dimension_series','acad_create_hole_callout','acad_setup_drawing_standard','acad_create_leader','acad_set_view','acad_run_batch','acad_attach_xref','acad_manage_xref','acad_create_layout','acad_export_pdf','acad_drill_holes','acad_create_shaft','acad_create_feature_control_frame','acad_section_solid','acad_create_hatch','acad_create_table','acad_extrude','acad_revolve','acad_boolean','acad_create_line', 'acad_create_circle', 'acad_create_arc', 'acad_create_polyline', 'acad_create_box', 'acad_create_layer', 'acad_create_style', 'acad_define_block', 'acad_insert_block', 'acad_set_attributes', 'acad_create_text', 'acad_create_mtext', 'acad_create_dimension', 'acad_move_entities', 'acad_transform_entities', 'acad_offset_entity', 'acad_edit_curve', 'acad_corner', 'acad_erase_entities', 'acad_save_copy']);
 export const descriptions: Record<ToolName, string> = {
   acad_list_instances: 'List explicitly paired local AutoCAD instances. No active-tab fallback.',
   acad_get_status: 'Read bridge/backend status; simulated backends are identified explicitly.',
@@ -141,7 +201,7 @@ export const descriptions: Record<ToolName, string> = {
   acad_create_layer: 'Create one new unlocked continuous-line layer with explicit ACI color and lineweight in hundredths of a millimetre. Existing names are rejected.',
   acad_create_text: 'Create plain single-line native TEXT in WCS XY; rotation is radians. Field expressions are rejected.',
   acad_create_mtext: 'Create plain multiline native MTEXT in WCS XY with explicit width; formatting is escaped. Rotation is radians.',
-  acad_create_dimension: 'Create a non-associative native linear/aligned/diameter/radius DIMENSION from explicit points. Coordinates and text/arrow size use lengthUnit, rotation uses radians. Radius uses start=center and end=chord; diameter uses opposite chord endpoints. Measurement is never overridden; optional lower<=0, upper>=0 tolerances are explicit deviations. Definition points do not follow later geometry edits.',
+  acad_create_dimension: 'Create a non-associative native DIMENSION from explicit points: linear/aligned, diameter (opposite chord endpoints), radius (start=center, end=chord), angular (two lines start/end and start2/end2, linePoint on the arc), angular3 (center and two points), arc_length (center and two points on one circle) or ordinate (feature point, leader end, axis x/y from origin). Coordinates and text/arrow size use lengthUnit, rotation radians; angles are measured in radians and displayed in degrees. The measured value is never overridden: optional notation only adds ISO symbols around it (count n×, Ø/R/SØ/SR/square/t= prefix, theoretically exact frame, reference parentheses, not-to-scale underline, ISO 286 fit class with optional written deviations such as "+0,021"/"0", limit dimension from tolerance, min/max single limit, ISO 14405 size modifiers, half dimension). Tolerance lower<=0, upper>=0 are explicit deviations. Displayed decimals equal precision (tolerancePrecision for deviations) and trailing zeros are always kept: 11 and 11,00 state different requirements, so choose precision from the requirement. Definition points do not follow later geometry edits.',
   acad_query_entities: 'Read bounded modelspace entity projections with a revision-bound cursor.',
   acad_get_entity: 'Read one entity from its explicit drawing and epoch.',
   acad_create_line: 'Create a modelspace WCS line with explicit length units and read it back.',
@@ -166,15 +226,17 @@ export const descriptions: Record<ToolName, string> = {
   acad_edit_curve: 'Trim a planar curve against explicit boundaries and retain the segment nearest keepPoint, replacing the source atomically; or extend only a LINE start/end to the nearest forward boundary intersection. Boundaries are never changed.',
   acad_corner: 'Fillet or chamfer exactly two WCS XY LINE segments sharing one endpoint; no implicit extension. Radius or both distances must fit inside segments. Optionally trim original endpoints in the same transaction.',
   acad_erase_entities: 'Erase explicit modelspace entities in one transaction.',
-  acad_setup_drawing_standard: 'Create an ISO drawing profile in one transaction: ISO 3098 lettering style (isocp.shx), ISO 128-2 thin dashed/long-dash dotted/long-dash double-dotted linetypes for the chosen line group, ten prefixed layers (visible, thin, hidden, center, cutting plane, phantom, dimension, hatch, text, symbol) with thick/thin/lettering lineweights, an ISO dimension style and PSLTSCALE=1. lineGroup is the thick width in mm (thin is half); textHeight is paper mm; viewScale is paper-mm/model-mm (1 means 1:1). Existing names are rejected, nothing is overwritten. The result lists the basis of every numeric choice and reports verification pending the full ISO text.',
+  acad_setup_drawing_standard: 'Create an ISO drawing profile in one transaction: ISO 3098 lettering style (isocp.shx), ISO 128-2 thin dashed/long-dash dotted/long-dash double-dotted linetypes for the chosen line group, ten prefixed layers (visible, thin, hidden, center, cutting plane, phantom, dimension, hatch, text, symbol) with thick/thin/lettering lineweights, an ISO dimension style and PSLTSCALE=1. lineGroup is the thick width in mm (thin is half); textHeight is paper mm; viewScale is paper-mm/model-mm (1 means 1:1). precision is the style default; trailing zeros are always kept because written decimals state the required precision. Existing names are rejected, nothing is overwritten. The result lists the basis of every numeric choice and reports verification pending the full ISO text.',
   acad_create_leader: 'Create one native MLEADER: straight leader through explicit WCS XY vertices (first = terminator point on the feature, last = start of the reference line), ISO terminator arrow/dot/none with explicit size, optional horizontal reference line (landingLength 0 disables it) and none/plain text/local block content. Text placement above sits on the reference line; after continues it. Block content connects at its base point at the end of the reference line; only existing non-constant attribute tags can be set. Vertices, terminator, landing and content are read back.',
+  acad_create_dimension_series: 'Create a chain (consecutive) or baseline (common origin) series of measured linear dimensions in one transaction. points are the explicit feature points in order; linePoint places the first dimension line; baseline lines step by spacing away from the points. Every member is read back like acad_create_dimension.',
+  acad_create_hole_callout: 'Create an ISO 15786-style simplified hole indication as a native MLEADER: count n×, Ø diameter with optional ISO 286 hole class, ×depth, counterbore (⌴Ø×depth) or countersink (⌵Ø×angle), or metric thread designation with ×depth and optional tap drill. Sizes are written decimal strings ("6,6", "11,00") reproduced exactly, because the written decimals state the required precision; only the separator follows decimalSeparator. Values come only from the request; pass circle to check the noted diameter against a real CIRCLE. Callout layout is pending full-text verification.',
   acad_get_operation_status: 'Reconcile an operation after timeout. Missing records do not prove no effect.',
   acad_save_copy: 'Write a new authorized DWG copy without replacing existing files or renaming the source.'
 };
 
 export function validateTool(name: ToolName, input: unknown): Record<string, unknown> {
   const parsed = toolSchemas[name].parse(input) as Record<string, unknown>;
-  const refs = [...((parsed.targets ?? (parsed.entityRef ? [parsed.entityRef] : [])) as Array<z.infer<typeof entityRef>>), ...((parsed.boundaries??[]) as Array<z.infer<typeof entityRef>>), ...((parsed.tools??[]) as Array<z.infer<typeof entityRef>>)];
+  const refs = [...((parsed.targets ?? (parsed.entityRef ? [parsed.entityRef] : [])) as Array<z.infer<typeof entityRef>>), ...((parsed.boundaries??[]) as Array<z.infer<typeof entityRef>>), ...((parsed.tools??[]) as Array<z.infer<typeof entityRef>>), ...(parsed.circle ? [parsed.circle as z.infer<typeof entityRef>] : [])];
   const unique = new Set<string>();
   for (const ref of refs) {
     const key = ref.handle.toUpperCase();
