@@ -8,9 +8,15 @@ Start a new ISO mechanical drawing with acad_setup_drawing_standard (standard=IS
 
 Use acad_create_leader for notes and symbol attachments. ISO practice: arrowhead where the leader ends on an outline, dot where it ends inside an outline, no terminator where it ends on a dimension line. The first vertex is the terminator point; the last vertex starts the horizontal reference line. Text placement "above" puts the note on the reference line. Block content (including future generated symbol blocks) connects at its insertion point at the end of the reference line.
 
-## Precision is part of the requirement
+## Written precision and applicable tolerances
 
-The number of decimals written on a drawing is a requirement: 11 leaves the decimals free (general tolerance applies), 11,00 requires the first two decimals to be 00. Never add or drop decimals. Choose precision per dimension from the user's requirement (precision 0 for general sizes under ISO 2768/22081, 2 only where the user asks for hundredths); trailing zeros are always shown. Deviations can state their own tolerancePrecision. In hole callouts and fit deviations, pass the values as written strings ("6,60", "11,00", "+0,021", "0"); they are reproduced exactly, only the decimal separator follows the drawing.
+Preserve the written number of decimals and trailing zeros. The nominal value of 11 and 11,00 is the same; the decimal count alone establishes neither a tighter tolerance nor a zero tolerance. Determine the applicable dimensional tolerance from an explicit dimension tolerance or fit designation, the applicable title-block/general notes, or the referenced standard and class. Use decimal-place-based tolerance tables only when the drawing explicitly defines them. Do not infer that a general ISO tolerance requires precision 0. If the applicable tolerance or verified fit data is missing or ambiguous, ask for it before declaring manufacturing acceptance.
+
+For example, an explicitly specified 11,00 ±0,10 has nominal value 11 and tolerance ±0,10; its two displayed decimals do not make that tolerance zero. If a title block explicitly assigns different tolerances to whole-number and two-decimal dimensions, apply that mapping to 11 and 11,00 respectively. Without such a rule, do not invent ±0,01 from the latter's spelling.
+
+Set each dimension's precision from the requested display and verify its actual measurement independently. Trailing zeros remain shown, and deviations can use their own tolerancePrecision. In hole callouts and fit deviations, pass values as written strings ("6,60", "11,00", "+0,021", "0"); reproduce them exactly, with only the decimal separator following the drawing. These formatting settings do not calculate or change the applicable tolerance.
+
+Sources: [AutoCAD display precision](https://help.autodesk.com/cloudhelp/2023/ENU/AutoCAD-LT/files/GUID-8F311450-A848-4682-81A5-D0EC6E3499C9.htm), [ISO general-tolerance scope](https://www.iso.org/obp/ui/?_escaped_fragment_=iso%3Astd%3A7748%3Aen). Use the edition referenced by the drawing; these links do not supply fit tables or certify compliance.
 
 ## Dimension kinds and ISO notation
 

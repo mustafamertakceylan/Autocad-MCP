@@ -419,8 +419,18 @@ Geliştirmede bulunup düzeltilen hatalar: katman açıklaması veritabanına ek
 | Normal derleme tam regresyon | 13 paket: önceki 11 paket **338/338** değişmeden, ISO profil **44/44**, ölçü paketi **61/61**. Kanıt `tmp/phase5-regressions/74636caa-ee0f-4d2d-a25d-de574224ac92/results.json` |
 | PDF görsel denetim | 600 dpi: Ⓔ, □, ×, ⌴, ⌵, °, ⌒ (yay uzunluğu), TED çerçevesi, alt çizgi, H7 yanında yığılmış sapma ve limit ölçü doğru çiziliyor; çap ölçüsünde tek Ø |
 
-Kullanıcı kuralı (2026-10-22): yazılan ondalık basamak sayısı gerekliliktir (`11` ≠ `11,00`). Elle yazılan değerler metin olarak aynen yazılır; ölçülerde sondaki sıfırlar gizlenmez (DIMZIN/DIMTZIN 0). Kural skill'e eklendi.
+Kullanıcı kuralı (2026-10-22, anlamı 2026-10-23'te netleştirildi): yazılan ondalık basamaklar korunur; elle yazılan değerler metin olarak aynen iletilir ve ölçülerde sondaki sıfırlar gizlenmez (DIMZIN/DIMTZIN 0). `11` ve `11,00` aynı anma değeridir; basamak sayısı kendi başına tolerans belirlemez. Ondalığa göre tolerans eşlemesi yalnız antet/genel notlarda açıkça tanımlanmışsa uygulanır; diğer durumlarda ölçüdeki tolerans/geçme veya belirtilen standart ve sınıf esas alınır. Bu açıklama düzeltmesi, yukarıdaki tarihli canlı testlerin yeniden çalıştırıldığı anlamına gelmez.
 
 Geliştirmede bulunup düzeltilenler: AutoCAD MText `\U+` kaçışlarını okumada karaktere çevirdiği için × ve Ⓔ doğrudan UTF-8 yazılır; açısal ölçüde yay noktası yay üzerinde normalleştiği için yarıçap doğrulanır; çap/yarıçap ölçüsünde Ø/R iki kez çıkıyordu (AutoCAD kendisi ekliyor); sayıların JSON'dan biçimlenmesi kullanıcının yazdığı basamakları değiştiriyordu (yazılı metne geçildi). Doğrulama başarısız olduğunda okunan geometri artık sonuçta döner.
 
 **Çalıştırılmadı / sınırlar:** ISO 15786 not düzeni ve ISO 14405 kod listesi tam metinden doğrulanmadı (`pending_full_text`). Eski sayısal `tolerance` alanının gösterim basamağı `precision`/`tolerancePrecision` ile belirlenir; yazılı metin biçimine geçirilmedi. Görünür masaüstü, hata enjeksiyonu, kurulum paketi ve Mac testleri bu değişiklikle çalıştırılmadı.
+
+## 19. Yazım hassasiyeti ile toleransın ayrılması
+
+2026-10-23 kullanıcı kararı: yazılan ondalık basamaklar korunur; tolerans ölçüden, antet/genel notlardan veya belirtilen standart ve sınıftan belirlenir. Ondalık basamağa göre tolerans yalnız çizimde açıkça tanımlanmışsa uygulanır; `11,00` kendi başına sıfır veya ±0,01 tolerans anlamına gelmez. Belirsiz tolerans uydurulmaz. Genel skill, makine referansı, iki MCP araç açıklaması, katalog, ilgili kod yorumları ve test açıklamaları buna göre düzeltildi.
+
+Kontroller: `npm run check` geçti; normal Windows kullanıcı bağlamında `npm test` **52/52**, skill-creator `quick_validate.py` doğrulaması geçti. Sandbox içindeki ilk test denemesinde süreç/ACL kullanan masaüstü testleri hata verdi ve deneme durduruldu; normal kullanıcı bağlamındaki tam tekrar geçti. Doğrulayıcının PyYAML bağımlılığı yalnız Git dışındaki `tmp/skill-validator-deps` klasörüne kuruldu.
+
+Resmî MCP istemcisiyle katalog yeniden üretildi: **56 araç / 3 resource**. Önceki katalogla nesne karşılaştırmasında yalnız `acad_create_dimension` ve `acad_create_hole_callout` açıklamalarının değiştiği, bütün şemalar ve diğer metadata'nın korunduğu doğrulandı. İki native başlığın yorumlar çıkarıldıktan sonraki içerikleri önceki commit ile eşit; sayı yazımı ve geometri yürütme davranışı değiştirilmedi. `git diff --check` geçti.
+
+Bu görev açıklama/skill düzeltmesidir; veritabanı veya migration yoktur. Native derleme, canlı AutoCAD/DWG/PDF, model üzerinden skill davranış testi, kurulum ve Mac testleri yeniden çalıştırılmadı. Yeni release üretilmedi; v1.0.0 paket/tag byte'ları korunur.

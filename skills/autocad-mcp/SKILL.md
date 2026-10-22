@@ -11,7 +11,7 @@ Call list_instances, get_status, get_capabilities, and list_documents. Require a
 
 ## Plan and draw
 
-Written decimals are a requirement, not formatting: 11 leaves the decimals free, 11,00 requires the first two decimals to be 00. Never add, drop or round away decimals the user wrote; set each dimension's precision from the stated requirement and pass written values (hole callouts, fit deviations) as the exact strings the user gave.
+Preserve the decimals the user wrote, including trailing zeros; pass hole callout values and fit deviations as exact written strings. Display precision alone does not define a tolerance: 11 and 11,00 have the same nominal value. Determine the applicable tolerance from the dimension, title-block/general notes or the referenced standard and class. Use decimal-place-based tolerances only when the drawing explicitly defines that mapping; if the tolerance is unspecified or ambiguous, ask rather than inventing one. Set each dimension's precision from the requested display without replacing its actual measured value.
 
 For an image, separate readable dimensions from assumptions. Ask about an unreadable dimension, missing unit, or symmetry needed to determine the geometry. Convert confirmed dimensions into explicit WCS coordinates before writing. Do not infer manufacturing tolerances from pixels.
 

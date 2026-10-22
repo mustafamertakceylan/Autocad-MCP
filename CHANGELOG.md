@@ -16,8 +16,10 @@
   TED, reference, not-to-scale, ISO 286 fit, limits, min/max, ISO 14405
   modifiers, half dimensions) and ISO 15786-style hole callouts with an
   optional check against the real circle.
-- Written decimals are kept exactly (11 is not 11,00); trailing zeros are
-  never suppressed.
+- Written decimal places and trailing zeros are kept exactly. Display
+  precision alone does not define tolerance; use the dimension, drawing
+  notes or referenced standard. Decimal-place tolerance mappings apply
+  only when explicitly specified on the drawing.
 
 ### Türkçe
 
@@ -32,8 +34,10 @@
   çerçevesi, referans, ölçek dışı, ISO 286 geçme, limit, min/max, ISO 14405
   değiştiricileri, yarım ölçü) ve gerçek daireyle kontrol edilebilen ISO
   15786 tarzı delik notları.
-- Yazılan ondalıklar aynen korunur (11 ile 11,00 aynı değildir); sondaki
-  sıfırlar gizlenmez.
+- Yazılan ondalık basamaklar ve sondaki sıfırlar aynen korunur. Gösterim
+  hassasiyeti tek başına tolerans belirlemez; ölçü, çizim notları veya
+  atıf yapılan standart esas alınır. Ondalık basamağa göre tolerans
+  eşlemesi yalnız çizimde açıkça tanımlanmışsa uygulanır.
 
 ## 1.0.0 — 2026-10-20
 
