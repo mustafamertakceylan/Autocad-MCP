@@ -42,7 +42,7 @@ test('dimension series and hole callouts validate typed input',()=>{
  assert.throws(()=>validateTool('acad_create_dimension_series',{...series,points:[[0,0,0],[0,10,0]]}));
  const callout={...base,vertices:[[0,0,0],[10,10,0]],terminator:'arrow',terminatorSize:3.5,landingLength:8,landingDirection:'right',textHeight:3.5,decimalSeparator:'comma',hole:{count:4,diameter:'6,6',counterbore:{diameter:'11',depth:'6,8'}}};
  assert.ok(validateTool('acad_create_hole_callout',callout));assert.ok(mutating.has('acad_create_hole_callout'));
- // The written form is the stated precision: 11 and 11,00 are different requirements and pass through unchanged.
+ // Written values preserve their display precision; decimal places do not infer a tolerance.
  assert.equal((validateTool('acad_create_hole_callout',{...callout,hole:{diameter:'6,60',depth:'11,00'}}) as any).hole.depth,'11,00');
  for(const hole of [{},{diameter:'6,6',counterbore:{diameter:'5',depth:'2'}},{diameter:'6,6',counterbore:{diameter:'11',depth:'6'},countersink:{diameter:'12',angle:'90'}},
   {thread:{designation:'M10-6H'},counterbore:{diameter:'11',depth:'6'}},{thread:{designation:'10mm'}},{diameter:'6,6',countersink:{diameter:'12',angle:'180'}},{diameter:'6,6',fit:'g6'},

@@ -132,8 +132,8 @@ std::unique_ptr<AcDbEntity> make_annotation(AcDbDatabase *db, const std::string 
 }
 // Dimension text template. "<>" is AutoCAD's live measured value: notation only
 // adds ISO symbols around the real measurement and can never replace it.
-// Written values keep the decimals the user wrote: "11" and "11,00" state
-// different precision, so digits are never added or dropped; only the decimal
+// Written values keep their display precision, including trailing zeros,
+// without inferring acceptance tolerances; only the decimal
 // separator follows the drawing. Signed values are tolerance deviations.
 std::string written(const json &p, const char *key, bool signed_value = false) {
     const auto value = text(p, key);
@@ -226,8 +226,8 @@ void configure_annotation(AcDbEntity *e, AcDbDatabase *db, const json &p, double
         cad(d->setDimsd1(suppress=="first"));cad(d->setDimse1(suppress=="first"));cad(d->setDimsd2(suppress=="second"));cad(d->setDimse2(suppress=="second"));
         const bool limits=notation.value("limits",false);need(!limits||p.contains("tolerance"),"VALIDATION_FAILED","Limit dimensions need explicit deviations");
         cad(d->setDimtol(p.contains("tolerance")&&!limits));cad(d->setDimlim(limits));
-        // Displayed decimals are the stated precision: zeros are never dropped
-        // (11,00 is not 11). Deviations may state their own precision.
+        // Preserve requested display precision and trailing zeros independently
+        // of tolerance values. Deviations may state their own precision.
         const auto tolerancePrecision=p.contains("tolerancePrecision")?number(p,"tolerancePrecision"):precision;need(tolerancePrecision<=8);
         cad(d->setDimtdec(static_cast<int>(tolerancePrecision)));cad(d->setDimzin(0));cad(d->setDimtzin(0));
         if(p.contains("tolerance")) {

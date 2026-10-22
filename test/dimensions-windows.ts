@@ -28,8 +28,8 @@ try{
  // B2/B3 notation: the live measurement "<>" is always kept.
  const fit=await dim({kind:'linear',start:[0,0,0],end:[80,0,0],linePoint:[40,-12,0],notation:{prefix:'diameter',fit:'H7',fitDeviations:{upper:'+0,021',lower:'0'}}});
  check('fit class keeps the measurement and adds Ø, H7 and stacked deviations',near(fit.measurement,80)&&fit.dimensionText==='%%c<>H7(\\S+0,021^0;)'&&fit.decimalSeparator===',');
- check('stated precision keeps trailing zeros (80,00 is not 80)',fit.trailingZeros==='kept'&&fit.precision===2);
- const loose=await dim({kind:'linear',start:[0,0,0],end:[80,0,0],linePoint:[40,-70,0],precision:0});check('precision 0 states a free-decimal size',loose.precision===0&&loose.trailingZeros==='kept');
+ check('requested display precision keeps trailing zeros (80,00)',fit.trailingZeros==='kept'&&fit.precision===2);
+ const loose=await dim({kind:'linear',start:[0,0,0],end:[80,0,0],linePoint:[40,-70,0],precision:0});check('precision 0 displays whole units without suppressing zeros',loose.precision===0&&loose.trailingZeros==='kept');
  const deviation=await dim({kind:'linear',start:[0,40,0],end:[80,40,0],linePoint:[40,80,0],precision:0,tolerance:{lower:-0.1,upper:0.1},tolerancePrecision:1});
  check('deviations keep their own stated precision',deviation.tolerancePrecision===1&&deviation.precision===0);
  const ted=await dim({kind:'linear',start:[0,0,0],end:[0,40,0],linePoint:[-12,20,0],rotation:Math.PI/2,notation:{kind:'theoretical_exact'}});
