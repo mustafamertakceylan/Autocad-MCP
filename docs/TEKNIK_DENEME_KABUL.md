@@ -407,3 +407,20 @@ UI testleri yayımlanmış normal1.0.0 EXE üzerinde yapıldı. Hata enjekte ede
 Geliştirmede bulunup düzeltilen hatalar: katman açıklaması veritabanına eklenmeden yazılınca `eNullObjectPointer`; `AcDmUtil::globalArrowName` dönüşünün serbest bırakılması AutoCAD'i çökertti (ok adı artık blok kaydından okunur); yerleşik ok bloğu adı `_Dot` biçimindedir; MLEADER içeriğe bağlanırken fazladan köşe ekliyordu (içerik bağlantı noktası referans çizgisi sonuna hizalanır, fazladan köşe kaldırılır ve okunarak doğrulanır).
 
 **Çalıştırılmadı / sınırlar:** ISO tam metinleri olmadan ölçü oranları AutoCAD ISO-25 stiline, çizgi elemanları `acadiso.lin` çapraz kontrolüne dayanır ve sonuç `pending_full_text` bildirir. Görünür masaüstü AutoCAD, hata enjeksiyonu (Faz 3) ve kurulum paketi testleri bu değişiklikle tekrarlanmadı; yeni sürüm paketi üretilmedi. Mac çalıştırılmadı.
+
+## 18. Faz 7 Ö1 — B1–B4: ölçü türleri, ISO gösterimi, seriler ve delik notu
+
+2026-10-22, Windows AutoCAD 2027 Core Console, izole profil, stok `acadiso.dwt` sentetik kopyaları; uygulama yönetici tarafından yapıldı.
+
+| Kontrol | Sonuç |
+|---|---|
+| Ortak | `npm run check` temiz; `npm test` **52/52**; CTest **2/2**; `npm run catalog` **56 araç**/3 resource |
+| Yeni canlı paket (test derlemesi) | `test/dimensions-windows.ts` **61/61**: açısal (iki çizgi/üç nokta), yay uzunluğu, koordinat; zincir ve taban çizgili seri; Ø+H7+yazılı sapma, TED çerçevesi, referans, ölçek dışı, limit, max, Ⓔ/LP, 4×□, yarım ölçü, küre yarıçapı; sondaki sıfırların korunması ve ayrı sapma hassasiyeti; ⌴/⌵/diş delik notları, gerçek daireyle çap kontrolü ve yanlış çapın revizyon değişmeden reddi, `6,60`/`11,00` yazılı değerlerinin aynen korunması; şema düzeyinde çelişkili gösterim reddi; A4 PDF; kaydet–yeniden aç. Kanıt `tmp/phase5-runs/52384df3-a3d9-4f64-a882-c896f8a203f6/results.json` |
+| Normal derleme tam regresyon | 13 paket: önceki 11 paket **338/338** değişmeden, ISO profil **44/44**, ölçü paketi **61/61**. Kanıt `tmp/phase5-regressions/74636caa-ee0f-4d2d-a25d-de574224ac92/results.json` |
+| PDF görsel denetim | 600 dpi: Ⓔ, □, ×, ⌴, ⌵, °, ⌒ (yay uzunluğu), TED çerçevesi, alt çizgi, H7 yanında yığılmış sapma ve limit ölçü doğru çiziliyor; çap ölçüsünde tek Ø |
+
+Kullanıcı kuralı (2026-10-22): yazılan ondalık basamak sayısı gerekliliktir (`11` ≠ `11,00`). Elle yazılan değerler metin olarak aynen yazılır; ölçülerde sondaki sıfırlar gizlenmez (DIMZIN/DIMTZIN 0). Kural skill'e eklendi.
+
+Geliştirmede bulunup düzeltilenler: AutoCAD MText `\U+` kaçışlarını okumada karaktere çevirdiği için × ve Ⓔ doğrudan UTF-8 yazılır; açısal ölçüde yay noktası yay üzerinde normalleştiği için yarıçap doğrulanır; çap/yarıçap ölçüsünde Ø/R iki kez çıkıyordu (AutoCAD kendisi ekliyor); sayıların JSON'dan biçimlenmesi kullanıcının yazdığı basamakları değiştiriyordu (yazılı metne geçildi). Doğrulama başarısız olduğunda okunan geometri artık sonuçta döner.
+
+**Çalıştırılmadı / sınırlar:** ISO 15786 not düzeni ve ISO 14405 kod listesi tam metinden doğrulanmadı (`pending_full_text`). Eski sayısal `tolerance` alanının gösterim basamağı `precision`/`tolerancePrecision` ile belirlenir; yazılı metin biçimine geçirilmedi. Görünür masaüstü, hata enjeksiyonu, kurulum paketi ve Mac testleri bu değişiklikle çalıştırılmadı.

@@ -11,6 +11,13 @@
   reference line and text or block content, fully read back.
 - Internal symbol block engine for upcoming GD&T, surface texture and
   welding symbols.
+- Angular, arc length and ordinate dimensions; chain/baseline series;
+  ISO notation around the live measurement (Ø/R/S, square, count, framed
+  TED, reference, not-to-scale, ISO 286 fit, limits, min/max, ISO 14405
+  modifiers, half dimensions) and ISO 15786-style hole callouts with an
+  optional check against the real circle.
+- Written decimals are kept exactly (11 is not 11,00); trailing zeros are
+  never suppressed.
 
 ### Türkçe
 
@@ -20,6 +27,13 @@
 - `acad_create_leader`: ok/nokta/uçsuz, referans çizgili, metin veya blok
   içerikli native MLEADER; tamamı geri okunur.
 - Gelecek GD&T, yüzey ve kaynak sembolleri için iç sembol blok motoru.
+- Açısal, yay uzunluğu ve koordinat ölçüleri; zincir/taban çizgili seri;
+  canlı ölçü değerinin çevresinde ISO gösterimi (Ø/R/S, kare, adet, TED
+  çerçevesi, referans, ölçek dışı, ISO 286 geçme, limit, min/max, ISO 14405
+  değiştiricileri, yarım ölçü) ve gerçek daireyle kontrol edilebilen ISO
+  15786 tarzı delik notları.
+- Yazılan ondalıklar aynen korunur (11 ile 11,00 aynı değildir); sondaki
+  sıfırlar gizlenmez.
 
 ## 1.0.0 — 2026-10-20
 
