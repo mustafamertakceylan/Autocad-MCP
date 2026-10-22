@@ -1,6 +1,6 @@
 # Mechanical drafting and modeling
 
-Use actual capabilities from the selected plugin; the Windows development catalog has 54 tools. Claude has not been live tested. Mac, surfaces/meshes, sheet-metal unfolding, gear/spring design and manufacturing certification remain outside the verified subset.
+Use actual capabilities from the selected plugin; the Windows development catalog has 56 tools. Claude has not been live tested. Mac, surfaces/meshes, sheet-metal unfolding, gear/spring design and manufacturing certification remain outside the verified subset.
 
 ## ISO drawing profile
 
@@ -8,11 +8,21 @@ Start a new ISO mechanical drawing with acad_setup_drawing_standard (standard=IS
 
 Use acad_create_leader for notes and symbol attachments. ISO practice: arrowhead where the leader ends on an outline, dot where it ends inside an outline, no terminator where it ends on a dimension line. The first vertex is the terminator point; the last vertex starts the horizontal reference line. Text placement "above" puts the note on the reference line. Block content (including future generated symbol blocks) connects at its insertion point at the end of the reference line.
 
+## Precision is part of the requirement
+
+The number of decimals written on a drawing is a requirement: 11 leaves the decimals free (general tolerance applies), 11,00 requires the first two decimals to be 00. Never add or drop decimals. Choose precision per dimension from the user's requirement (precision 0 for general sizes under ISO 2768/22081, 2 only where the user asks for hundredths); trailing zeros are always shown. Deviations can state their own tolerancePrecision. In hole callouts and fit deviations, pass the values as written strings ("6,60", "11,00", "+0,021", "0"); they are reproduced exactly, only the decimal separator follows the drawing.
+
+## Dimension kinds and ISO notation
+
+acad_create_dimension also creates angular (two lines), angular3 (center + two points), arc_length and ordinate dimensions. Optional notation adds ISO 129-1/286/14405 symbols around the live measured value without replacing it: count (4×), prefix (Ø, R, SØ, SR, square, t=), theoretical_exact (framed TED), reference (parentheses), not_to_scale (underlined), fit class (H7, g6, H7/g6) with optional written fitDeviations, limits (upper/lower limit sizes from tolerance), singleLimit min/max, sizeModifiers (Ⓔ, LP, GG, …) and suppress for half dimensions. Diameter and radius dimensions already show Ø/R; only the spherical S is added. Use acad_create_dimension_series for chain or baseline dimensioning so all members share one line or step evenly.
+
+acad_create_hole_callout writes an ISO 15786-style leader note: 4× Ø6,6 with optional hole class and ×depth, counterbore ⌴Ø11×6,8, countersink ⌵Ø12×90°, or a metric thread such as M10-6H×15 / Ø8,5×20. Pass circle to have the noted diameter checked against the real hole; a mismatch is rejected. The callout layout is pending verification against the full ISO 15786 text.
+
 ## Measured drawings
 
 Create layers and simple center/hidden linetypes before geometry. Signed dash lengths use explicit units. TEXT/MTEXT are plain text; executable fields and formatting injection are rejected. A lineweight of 25 means 0.25 mm. Named text fonts are limited to arial.ttf/txt.shx; installed font availability can differ.
 
-Use real DIMENSION objects: linear/aligned, diameter (opposite chord endpoints) or radius (center and chord). Actual measurement is never replaced by a claimed number. Explicit lower/upper tolerance deviations are supported; do not infer an ISO fit class, surface finish, thread, weld or tolerances from an image. Dimensions are non-associative: after editing the part, recheck/recreate its definition points.
+Use real DIMENSION objects: linear/aligned, diameter (opposite chord endpoints), radius (center and chord), angular, arc length or ordinate. Actual measurement is never replaced by a claimed number. Explicit lower/upper tolerance deviations and user-given fit classes are supported; do not infer an ISO fit class, surface finish, thread, weld or tolerances from an image. Dimensions are non-associative: after editing the part, recheck/recreate its definition points.
 
 A native FCF accepts an explicit characteristic, tolerance, optional diameter zone/MMC/LMC and datum labels. It records the chosen annotation; it does not validate engineering selection or certify ISO compliance. FCF visual extents are unavailable because an unrendered side database does not provide stable rendered bounds; text, position, height, scale and style are verified instead. Native roughness/weld-symbol tools are not implemented. Explicit user notes can be plain MTEXT and must be described as notes.
 

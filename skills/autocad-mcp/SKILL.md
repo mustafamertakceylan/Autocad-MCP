@@ -11,6 +11,8 @@ Call list_instances, get_status, get_capabilities, and list_documents. Require a
 
 ## Plan and draw
 
+Written decimals are a requirement, not formatting: 11 leaves the decimals free, 11,00 requires the first two decimals to be 00. Never add, drop or round away decimals the user wrote; set each dimension's precision from the stated requirement and pass written values (hole callouts, fit deviations) as the exact strings the user gave.
+
 For an image, separate readable dimensions from assumptions. Ask about an unreadable dimension, missing unit, or symmetry needed to determine the geometry. Convert confirmed dimensions into explicit WCS coordinates before writing. Do not infer manufacturing tolerances from pixels.
 
 The Windows development catalog covers technical annotations/styles, bounded 2D editing, blocks/attributes, solid modeling and drilling, sections/hatches, BOM/tables, model cameras, scaled paper layouts/PDF, staged xrefs and typed atomic batches. A running older plugin may still expose only the Phase4 subset: trust get_capabilities for that instance. Separate LINEs are not a joined polyline or a solid; a circle is not a drilled hole. Read [mechanical workflows](references/mechanical.md) for dimensions, solid identities, density, paper scale and xref limits. Arbitrary LISP, shell and general AutoCAD commands remain unavailable.

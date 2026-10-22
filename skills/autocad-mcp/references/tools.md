@@ -1,6 +1,6 @@
 # AutoCAD MCP contract
 
-The development Windows 2027 plugin exposes 54 tools. A running older plugin can support fewer; get_capabilities is authoritative for the paired instance. The server uses stdio and fixed public skill resources; no HTTP port is required. Strict input schemas are listed by MCP tools/list and exported in docs/TOOL_CATALOG.json. Output schemas are still generic objects; interpret the fields below.
+The development Windows 2027 plugin exposes 56 tools. A running older plugin can support fewer; get_capabilities is authoritative for the paired instance. The server uses stdio and fixed public skill resources; no HTTP port is required. Strict input schemas are listed by MCP tools/list and exported in docs/TOOL_CATALOG.json. Output schemas are still generic objects; interpret the fields below.
 
 Installed Windows previews pin the native source build identity in both the pairing grant and IPC handshake. VERSION_MISMATCH is terminal before a CAD request is sent: restart AutoCAD with the matching installed plugin, explicitly pair its new grant and restart the MCP client transport. Do not bypass the mismatch by editing a pairing file or retrying mutations. Source-checkout development servers can still use historical protocol-compatible test builds; they are not installed distribution acceptance.
 
@@ -37,13 +37,15 @@ A native rejection before commit/confirmed rollback has applied=false. Verificat
 - acad_edit_curve: trim retains segment nearest keepPoint and replaces the source; extend accepts LINE only, start/end to nearest forward boundary. Boundaries are preserved.
 - acad_corner: exactly2 XY LINEs sharing one endpoint; fillet radius or chamfer distances must fit. Optional trim in the same transaction; no implicit extension.
 - acad_create_layer, acad_create_style: create new metadata records, no replacement. Text fonts are arial.ttf/txt.shx; dimension and simple dash linetype styles have explicit sizes.
-- acad_create_text, acad_create_mtext, acad_create_dimension: plain text and non-associative measured dimensions; explicit tolerance deviations only. See [mechanical](mechanical.md).
+- acad_create_text, acad_create_mtext, acad_create_dimension: plain text and non-associative measured dimensions (linear, aligned, diameter, radius, angular, angular3, arc_length, ordinate); explicit tolerance deviations and ISO notation around the live measurement. Readback adds dimensionText (the "<>" template), basic, limits, suppressed, trailingZeros and tolerancePrecision. Angles are radians in measurement and degrees in displayValue. See [mechanical](mechanical.md).
 - acad_define_block, acad_insert_block, acad_set_attributes: local planar definitions, uniform insertion, bounded plain attributes. Original definition geometry is preserved.
 - acad_extrude, acad_revolve, acad_boolean: native solids from closed profiles; detached modeler computation, atomic replacement.
 - acad_drill_holes: max64 explicit cylindrical/counterbore/countersink holes along +/-Z. Every hole must remove material; no thread or standard fastener inference.
 - acad_create_shaft: max32 explicit coaxial length/diameter segments along +Z, no persistent design constraints.
 - acad_section_solid, acad_create_hatch, acad_create_table, acad_create_feature_control_frame: native REGION/HATCH/TABLE/FCF. No ISO certification or engineering selection is implied.
 - acad_setup_drawing_standard: once per drawing, before drafting. Creates prefixed ISO layers/linetypes/lettering/dimension style atomically; any existing name rejects the whole profile. Reports the numeric basis and verification=pending_full_text.
+- acad_create_dimension_series: chain or baseline linear dimensions in one transaction; every member is read back.
+- acad_create_hole_callout: ISO 15786-style hole note as MLEADER from typed hole data; optional circle check. Sizes are written strings that keep their decimals.
 - acad_create_leader: native MLEADER with explicit vertices, terminator arrow/dot/none, optional reference line and none/text/block content. Reads back vertices, terminator, landing, content and contentConnection (the point where content joins the reference line).
 
 ## Paper, files and batches
