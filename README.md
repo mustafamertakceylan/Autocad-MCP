@@ -71,6 +71,12 @@ npm test
 
 See the [developer guide](docs/GELISTIRME.md) for native builds, isolated AutoCAD testing and packaging. The end-user package bundles Node; users do not need the SDK or a compiler.
 
+### Contributing and community
+
+[Contributing](.github/CONTRIBUTING.md) · [Code of Conduct](.github/CODE_OF_CONDUCT.md) · [Security policy](.github/SECURITY.md) · [Report an issue](https://github.com/mustafamertakceylan/Autocad-MCP/issues/new/choose)
+
+Bug, feature and drawing/PDF forms accept English or Turkish. Use synthetic examples and follow the security policy for vulnerabilities.
+
 ### License and credits
 
 [Apache 2.0](LICENSE) · [Notice](NOTICE) · [Third-party licenses](THIRD_PARTY_NOTICES.md) · [Release notes](CHANGELOG.md)

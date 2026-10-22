@@ -1,0 +1,65 @@
+name: Drawing or PDF issue / Çizim veya PDF sorunu
+description: Report geometry, dimensions, lineweights, layout or title-block problems.
+title: "[Drawing]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use synthetic, shareable examples only. / Yalnız paylaşılabilir sentetik örnek kullanın.
+        A successful tool call does not prove engineering correctness. Separate requested geometry, AI-submitted operations and AutoCAD output.
+        İstenen geometriyi, AI'ın gönderdiği işlemi ve AutoCAD çıktısını ayrı anlatın.
+  - type: input
+    id: environment
+    attributes:
+      label: Versions and client / Sürümler ve istemci
+      description: Release/commit, OS, AutoCAD and MCP client/model if relevant; do not include account details.
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Main issue / Ana sorun
+      options:
+        - Geometry or dimensions / Geometri veya ölçüler
+        - Lineweights or linetypes / Çizgi kalınlığı veya tipi
+        - Views, layout or title block / Görünüş, yerleşim veya antet
+        - PDF or plot styles / PDF veya plot stilleri
+        - AI interpretation / AI yorumlaması
+        - Unsure / Emin değilim
+    validations:
+      required: true
+  - type: textarea
+    id: requirement
+    attributes:
+      label: Confirmed drawing requirements / Doğrulanmış çizim gereklilikleri
+      description: Give units, dimensions and expected result. Include the stated tolerance/title-block rule or standard if relevant; mark unknown values as unknown.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps and actual output / Adımlar ve gerçek çıktı
+      description: Include prompt and sanitized tool/results if available. Explain whether the DWG, PDF or both are affected.
+    validations:
+      required: true
+  - type: textarea
+    id: plotting
+    attributes:
+      label: Plot and line settings / Çıktı ve çizgi ayarları
+      description: If relevant, include layer lineweights, linetypes, CTB/STB, paper size, scale and rendered PDF observations. Do not upload proprietary plot files.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Public-safe evidence / Paylaşılabilir kanıt
+      description: Optional synthetic DWG/PDF or redacted screenshots. Remove personal paths, customer details and pairing data.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting / Göndermeden önce
+      options:
+        - label: I checked existing issues. / Mevcut issue'ları kontrol ettim.
+          required: true
+        - label: All evidence is synthetic or authorized for public sharing, with secrets/private data removed. / Kanıtlar sentetik veya paylaşmaya yetkili olduğum içerik; sır ve özel veri içermiyor.
+          required: true
+        - label: I will follow the [Code of Conduct](https://github.com/mustafamertakceylan/Autocad-MCP/blob/main/.github/CODE_OF_CONDUCT.md). / Davranış kurallarına uyacağım.
+          required: true

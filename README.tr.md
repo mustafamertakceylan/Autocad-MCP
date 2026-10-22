@@ -71,6 +71,12 @@ npm test
 
 Native derleme, izole AutoCAD testleri ve paketleme: [geliştirme rehberi](docs/GELISTIRME.md). Son kullanıcı paketi Node çalışma zamanını içerir; kullanıcıya SDK veya derleyici kurdurulmaz.
 
+### Katkı ve topluluk
+
+[Katkı rehberi](.github/CONTRIBUTING.md) · [Davranış kuralları](.github/CODE_OF_CONDUCT.md) · [Güvenlik politikası](.github/SECURITY.md) · [Issue aç](https://github.com/mustafamertakceylan/Autocad-MCP/issues/new/choose)
+
+Hata, özellik önerisi ve çizim/PDF formlarını Türkçe veya İngilizce doldurabilirsiniz. Sentetik örnek kullanın; güvenlik açıklarında güvenlik politikasını izleyin.
+
 ### Lisans ve katkılar
 
 [Apache 2.0](LICENSE) · [Bildirim](NOTICE) · [Üçüncü taraf lisansları](THIRD_PARTY_NOTICES.md) · [Sürüm notları](CHANGELOG.md)

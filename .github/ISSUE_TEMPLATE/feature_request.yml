@@ -1,0 +1,54 @@
+name: Feature request / Özellik önerisi
+description: Describe a CAD workflow, client integration or usability improvement.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Turkish is welcome. / Türkçe veya İngilizce yazabilirsiniz.
+        Check the roadmap and existing issues. Requests do not promise implementation or a release date.
+        Planı ve mevcut issue'ları inceleyin; öneri geliştirme veya yayın tarihi taahhüdü değildir.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and workflow / Sorun ve iş akışı
+      description: What are you trying to achieve, and what is missing?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior / Önerilen davranış
+      description: Describe expected inputs, outputs and verification. Include no private project data.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area / Alan
+      options:
+        - CAD tools / CAD araçları
+        - Mechanical skill / Makine skill'i
+        - Civil engineering skill / İnşaat skill'i
+        - Architecture skill / Mimarlık skill'i
+        - Desktop app or setup / Uygulama veya kurulum
+        - MCP client integration / MCP istemci bağlantısı
+        - Other / Diğer
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and references / Alternatifler ve kaynaklar
+      description: Optional workarounds or public references. Cite standard/edition without copying proprietary tables/text.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting / Göndermeden önce
+      options:
+        - label: I checked existing issues and the roadmap. / Mevcut issue'ları ve planı kontrol ettim.
+          required: true
+        - label: I included no secrets or private data. / Sır veya özel veri eklemedim.
+          required: true
+        - label: I will follow the [Code of Conduct](https://github.com/mustafamertakceylan/Autocad-MCP/blob/main/.github/CODE_OF_CONDUCT.md). / Davranış kurallarına uyacağım.
+          required: true

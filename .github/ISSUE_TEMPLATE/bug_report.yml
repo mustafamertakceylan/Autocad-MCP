@@ -1,0 +1,63 @@
+name: Bug report / Hata bildirimi
+description: Report a reproducible application, installation or MCP issue.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Turkish is welcome. / Türkçe veya İngilizce yazabilirsiniz.
+        Security issues: follow the [security policy](https://github.com/mustafamertakceylan/Autocad-MCP/security/policy).
+        Do not upload secrets, pairing.json, customer drawings or personal paths.
+        Sır, eşleştirme dosyası, müşteri çizimi veya kişisel yol paylaşmayın.
+  - type: input
+    id: version
+    attributes:
+      label: Release or commit / Sürüm veya commit
+      placeholder: "v1.0.0 ZIP or source commit / kaynak commit'i"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS and AutoCAD / İşletim sistemi ve AutoCAD
+      description: Include OS version, full AutoCAD version and architecture; write N/A if unrelated.
+      placeholder: "Windows 11 x64, full AutoCAD 2027"
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client and version / MCP istemcisi ve sürümü
+      description: Codex, Claude Code, OpenCode or other; write N/A for standalone installer issues.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps / Tekrarlama adımları
+      description: Use an isolated synthetic drawing; describe the smallest reproducible case.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual result / Beklenen ve gerçek sonuç
+      description: Include safe error text; distinguish a tool failure from an AI interpretation error.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence / Hassas bilgileri çıkarılmış kanıt
+      description: Optional sanitized logs/screenshots. Never include pairing.json, credentials or private CAD data.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting / Göndermeden önce
+      options:
+        - label: I checked existing issues. / Mevcut issue'ları kontrol ettim.
+          required: true
+        - label: I removed secrets and private data. / Sırları ve özel verileri çıkardım.
+          required: true
+        - label: I will follow the [Code of Conduct](https://github.com/mustafamertakceylan/Autocad-MCP/blob/main/.github/CODE_OF_CONDUCT.md). / Davranış kurallarına uyacağım.
+          required: true
