@@ -20,6 +20,34 @@
   precision alone does not define tolerance; use the dimension, drawing
   notes or referenced standard. Decimal-place tolerance mappings apply
   only when explicitly specified on the drawing.
+- `acad_create_feature_control_frame`: ISO rows with all 14 characteristic
+  symbols, written tolerance values, ISO 5458/2692/10579 modifiers, common
+  datums and ISO 5459 datum modifiers, stacked frames, adjacent indications
+  and an associated LEADER whose feature point is checked (surface, or in
+  line with the dimension line for an axis). The single-line form stays.
+- `acad_create_datum_feature`: datum triangle and letter frame (ISO 5459).
+- `acad_create_general_specification`: user-selected ISO 8015, ISO 2768,
+  ISO 14405 Ⓔ, ISO 22081 and ISO 10579 notes. Layouts pending full-text
+  verification; Ⓣ and plane indicators are not implemented.
+- `acad_create_drawing_sheet`: ISO 5457 A0–A4 frame (20/10 mm margins) and
+  centring marks; returns the title block corner.
+- `acad_create_title_block`: the education_122x31 title block layout as a
+  signed attributed block with a first/third angle projection symbol.
+  Values come only from the request and omitted fields stay empty; a value
+  wider than its cell is rejected.
+- `acad_create_layout` takes `plotStyle` (monochrome.ctb, Grayscale.ctb,
+  acad.ctb), so technical PDFs print black instead of layer colours.
+- `acad_create_text` takes `justification` and applies the style width
+  factor, which TEXT entities previously ignored.
+- `acad_create_dimension` takes `textPosition` for non-diameter kinds; the
+  description now states that diameter/radius `linePoint` is the text
+  location.
+- `acad_extrude` takes `profilePlane` XZ/YZ for front and side profiles
+  (inclined arms, holes along Y).
+- A bare `acad_create_leader` (no reference line, no content) no longer
+  needs `landingDirection`; `acad_query_entities` no longer needs `filter`.
+- `acad_create_layer` description states that existing linetypes are
+  accepted.
 
 ### Türkçe
 
@@ -38,6 +66,32 @@
   hassasiyeti tek başına tolerans belirlemez; ölçü, çizim notları veya
   atıf yapılan standart esas alınır. Ondalık basamağa göre tolerans
   eşlemesi yalnız çizimde açıkça tanımlanmışsa uygulanır.
+- `acad_create_feature_control_frame`: 14 karakteristik sembolü, yazılı
+  tolerans değeri, ISO 5458/2692/10579 değiştiricileri, ortak datum ve
+  ISO 5459 datum değiştiricileri, üst üste çerçeveler, çerçeve üstü
+  göstergeler ve unsur noktası denetlenen bağlı LEADER (yüzey ya da eksen
+  için ölçü çizgisi hizası). Tek satırlı eski biçim korunur.
+- `acad_create_datum_feature`: datum üçgeni ve harf çerçevesi (ISO 5459).
+- `acad_create_general_specification`: kullanıcının seçtiği ISO 8015,
+  ISO 2768, ISO 14405 Ⓔ, ISO 22081 ve ISO 10579 notları. Düzen tam metin
+  doğrulaması bekliyor; Ⓣ ve düzlem göstergeleri uygulanmadı.
+- `acad_create_drawing_sheet`: ISO 5457 A0–A4 çerçeve (20/10 mm kenar
+  payı) ve merkezleme işaretleri; antet köşesini döndürür.
+- `acad_create_title_block`: education_122x31 antet düzeni, birinci/üçüncü
+  açı sembollü imzalı nitelikli blok. Değerler yalnız istekten gelir,
+  verilmeyen alanlar boş kalır; hücresine sığmayan değer reddedilir.
+- `acad_create_layout` `plotStyle` alır (monochrome.ctb, Grayscale.ctb,
+  acad.ctb); teknik PDF katman renkleri yerine siyah basılır.
+- `acad_create_text` `justification` alır ve stilin genişlik oranını
+  uygular (TEXT önceden bunu yok sayıyordu).
+- `acad_create_dimension` çap dışı türlerde `textPosition` alır; açıklama
+  çap/yarıçapta `linePoint`in yazı konumu olduğunu belirtir.
+- `acad_extrude` önden/yandan profiller için `profilePlane` XZ/YZ alır
+  (eğik kol, Y yönlü delik).
+- Referans çizgisiz ve içeriksiz `acad_create_leader` artık
+  `landingDirection` istemez; `acad_query_entities` `filter` istemez.
+- `acad_create_layer` açıklaması mevcut çizgi tiplerinin kabul edildiğini
+  belirtir.
 
 ## 1.0.0 — 2026-10-20
 

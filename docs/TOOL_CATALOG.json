@@ -2,7 +2,7 @@
   "bridgeVersion": "0.1.0",
   "transport": "stdio",
   "platform": "Windows AutoCAD 2027",
-  "toolCount": 56,
+  "toolCount": 60,
   "tools": [
     {
       "name": "acad_list_instances",
@@ -378,7 +378,7 @@
     },
     {
       "name": "acad_create_layout",
-      "description": "Create a new PDF-configured paper layout with one locked model viewport. Paper center/size are millimetres; modelCenter uses lengthUnit; scale is paper-mm/model-mm (1 means 1:1). Direction is explicit. Existing layouts and model geometry are preserved.",
+      "description": "Create a new PDF-configured paper layout with one locked model viewport. Paper center/size are millimetres; modelCenter uses lengthUnit; scale is paper-mm/model-mm (1 means 1:1). Direction is explicit. Optional plotStyle selects an installed colour-dependent table: monochrome.ctb prints every colour black (use it for technical drawings), Grayscale.ctb or acad.ctb. Existing layouts and model geometry are preserved.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -499,6 +499,14 @@
               "scale"
             ],
             "additionalProperties": false
+          },
+          "plotStyle": {
+            "type": "string",
+            "enum": [
+              "monochrome.ctb",
+              "Grayscale.ctb",
+              "acad.ctb"
+            ]
           }
         },
         "required": [
@@ -1789,7 +1797,7 @@
     },
     {
       "name": "acad_create_layer",
-      "description": "Create one new unlocked continuous-line layer with explicit ACI color and lineweight in hundredths of a millimetre. Existing names are rejected.",
+      "description": "Create one new unlocked layer with explicit ACI color, lineweight in hundredths of a millimetre and Continuous or an existing named linetype (for example one created by acad_setup_drawing_standard). Existing names are rejected.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1872,7 +1880,7 @@
     },
     {
       "name": "acad_create_text",
-      "description": "Create plain single-line native TEXT in WCS XY; rotation is radians. Field expressions are rejected.",
+      "description": "Create plain single-line native TEXT in WCS XY; rotation is radians. justification anchors position (left = baseline left, default; center/right on the baseline; middle_*/top_*). The text takes the style width factor. SHX fonts such as isocp.shx lack some letters (Turkish İ, ı, Ş, Ğ print as ?); use an arial.ttf style for such text. Field expressions are rejected.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1947,6 +1955,20 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "justification": {
+            "type": "string",
+            "enum": [
+              "left",
+              "center",
+              "right",
+              "middle_left",
+              "middle_center",
+              "middle_right",
+              "top_left",
+              "top_center",
+              "top_right"
+            ]
           }
         },
         "required": [
@@ -2095,7 +2117,7 @@
     },
     {
       "name": "acad_create_dimension",
-      "description": "Create a non-associative native DIMENSION from explicit points: linear/aligned, diameter (opposite chord endpoints), radius (start=center, end=chord), angular (two lines start/end and start2/end2, linePoint on the arc), angular3 (center and two points), arc_length (center and two points on one circle) or ordinate (feature point, leader end, axis x/y from origin). Coordinates and text/arrow size use lengthUnit, rotation radians; angles are measured in radians and displayed in degrees. The measured value is never overridden: optional notation only adds ISO symbols around it (count n×, Ø/R/SØ/SR/square/t= prefix, theoretically exact frame, reference parentheses, not-to-scale underline, ISO 286 fit class with optional written deviations such as \"+0,021\"/\"0\", limit dimension from tolerance, min/max single limit, ISO 14405 size modifiers, half dimension). Tolerance lower<=0, upper>=0 are explicit deviations. Displayed decimals equal precision (tolerancePrecision for deviations), with trailing zeros kept. Display precision does not determine a tolerance: obtain it from the dimension, applicable title-block notes or a referenced standard; use decimal-place mappings only when explicitly specified. Definition points do not follow later geometry edits.",
+      "description": "Create a non-associative native DIMENSION from explicit points: linear/aligned, diameter (opposite chord endpoints), radius (start=center, end=chord), angular (two lines start/end and start2/end2, linePoint on the arc), angular3 (center and two points), arc_length (center and two points on one circle) or ordinate (feature point, leader end, axis x/y from origin). Coordinates and text/arrow size use lengthUnit, rotation radians; angles are measured in radians and displayed in degrees. The measured value is never overridden: optional notation only adds ISO symbols around it (count n×, Ø/R/SØ/SR/square/t= prefix, theoretically exact frame, reference parentheses, not-to-scale underline, ISO 286 fit class with optional written deviations such as \"+0,021\"/\"0\", limit dimension from tolerance, min/max single limit, ISO 14405 size modifiers, half dimension). Tolerance lower<=0, upper>=0 are explicit deviations. Displayed decimals equal precision (tolerancePrecision for deviations), with trailing zeros kept. Display precision does not determine a tolerance: obtain it from the dimension, applicable title-block notes or a referenced standard; use decimal-place mappings only when explicitly specified. For diameter and radius dimensions linePoint is the text location; AutoCAD keeps it on the line through start and end (the center for radius), so give a point on that line outside the circle to keep the text clear; other kinds accept an optional textPosition that moves only the text beside an unchanged dimension line. Definition points do not follow later geometry edits.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -2323,6 +2345,14 @@
             "minItems": 3,
             "maxItems": 3
           },
+          "textPosition": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
           "rotation": {
             "default": 0,
             "type": "number"
@@ -2513,11 +2543,16 @@
                 "origin",
                 "formattedText",
                 "trailingZeros",
-                "tolerancePrecision"
+                "tolerancePrecision",
+                "annotation",
+                "hookLine",
+                "justification",
+                "widthFactor"
               ]
             }
           },
           "filter": {
+            "default": {},
             "type": "object",
             "properties": {
               "type": {
@@ -2536,7 +2571,8 @@
                   "REGION",
                   "TABLE",
                   "FCF",
-                  "MLEADER"
+                  "MLEADER",
+                  "LEADER"
                 ]
               },
               "layer": {
@@ -2563,8 +2599,7 @@
           "instanceId",
           "documentId",
           "documentEpoch",
-          "coordinateSystem",
-          "filter"
+          "coordinateSystem"
         ],
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false
@@ -2694,7 +2729,11 @@
                 "origin",
                 "formattedText",
                 "trailingZeros",
-                "tolerancePrecision"
+                "tolerancePrecision",
+                "annotation",
+                "hookLine",
+                "justification",
+                "widthFactor"
               ]
             }
           },
@@ -3255,7 +3294,7 @@
     },
     {
       "name": "acad_extrude",
-      "description": "Extrude one closed WCS XY CIRCLE/LWPOLYLINE profile along Z, without taper. Height uses lengthUnit and may be negative. Preserve the profile by default; explicitly keepProfile=false erases it atomically with creation.",
+      "description": "Extrude one closed WCS XY CIRCLE/LWPOLYLINE profile, without taper. profilePlane XY (default) extrudes along +Z*height; XZ maps the profile (x, y) to (x, 0, y) and extrudes along +Y*height (front-view profiles such as an inclined arm or a hole along Y); YZ maps it to (0, x, y) along +X*height. Height uses lengthUnit and may be negative. Preserve the profile by default; explicitly keepProfile=false erases it atomically with creation.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -3332,6 +3371,14 @@
           "keepProfile": {
             "default": true,
             "type": "boolean"
+          },
+          "profilePlane": {
+            "type": "string",
+            "enum": [
+              "XY",
+              "XZ",
+              "YZ"
+            ]
           },
           "layer": {
             "type": "string",
@@ -4488,7 +4535,7 @@
     },
     {
       "name": "acad_create_feature_control_frame",
-      "description": "Create one native FCF geometric tolerance frame with an explicit characteristic, tolerance, optional diameter/material condition and up to three datum labels. Dimensions use lengthUnit. This encodes the chosen annotation; it does not validate the engineering choice or certify ISO compliance.",
+      "description": "Create a native FCF geometric tolerance frame (ISO 1101). Preferred ISO form: rows (1-3 stacked frames) with one of the 14 characteristic symbols (concentricity and coaxiality share one), a tolerance zone written as stated (\"0,05\", \"0,050\") with optional Ø/SØ, CZ/SZ/CZR/SIM (ISO 5458), UZ offset, OZ/VA, derived feature Ⓐ, projected zone Ⓟ+length, MMR Ⓜ/LMR Ⓛ (ISO 2692) with reciprocity Ⓡ and free state Ⓕ (ISO 10579), and up to three datum compartments (letter, common datum A-B, ISO 5459 modifiers such as [CF] [PL] and Ⓜ/Ⓛ). Form tolerances take no datum; orientation, coaxiality/concentricity, symmetry and runout require one. Optional adjacent indications above the frame (n×, UF, between A↔B, ACS/LD/MD/PD) and an associated native LEADER: vertices are the point on the feature then optional bends, and AutoCAD joins the frame end facing the last bend (the leader must not cross the frame); the feature point is checked (surface: on a referenced curve; axis or median feature: in line with a referenced linear/aligned dimension line, checked), arrow or dot, optional all-around/all-over circle on the leader bend. The legacy single-line form (numeric tolerance, MMC/LMC) stays accepted. Values come only from the request; written decimals are kept exactly and do not by themselves define a tolerance. This encodes the chosen annotation; it does not validate the engineering choice or certify ISO compliance; modifier order and symbol proportions are pending full-text verification.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -4541,6 +4588,335 @@
             "minItems": 3,
             "maxItems": 3
           },
+          "textHeight": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "layer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "style": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "decimalSeparator": {
+            "type": "string",
+            "enum": [
+              "comma",
+              "point"
+            ]
+          },
+          "rows": {
+            "minItems": 1,
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "characteristic": {
+                  "type": "string",
+                  "enum": [
+                    "straightness",
+                    "flatness",
+                    "roundness",
+                    "cylindricity",
+                    "line_profile",
+                    "surface_profile",
+                    "parallelism",
+                    "perpendicularity",
+                    "angularity",
+                    "position",
+                    "concentricity",
+                    "coaxiality",
+                    "symmetry",
+                    "circular_runout",
+                    "total_runout"
+                  ]
+                },
+                "zone": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "pattern": "^[0-9]{1,4}([.,][0-9]{1,4})?$"
+                    },
+                    "shape": {
+                      "type": "string",
+                      "enum": [
+                        "diameter",
+                        "spherical_diameter"
+                      ]
+                    },
+                    "combined": {
+                      "type": "string",
+                      "enum": [
+                        "CZ",
+                        "SZ",
+                        "CZR",
+                        "SIM"
+                      ]
+                    },
+                    "offset": {
+                      "type": "string",
+                      "pattern": "^(0([.,]0{1,4})?|[+-][0-9]{1,3}([.,][0-9]{1,4})?)$"
+                    },
+                    "constraint": {
+                      "type": "string",
+                      "enum": [
+                        "OZ",
+                        "VA"
+                      ]
+                    },
+                    "derived": {
+                      "type": "boolean"
+                    },
+                    "projected": {
+                      "type": "string",
+                      "pattern": "^[0-9]{1,4}([.,][0-9]{1,4})?$"
+                    },
+                    "material": {
+                      "type": "string",
+                      "enum": [
+                        "MMR",
+                        "LMR"
+                      ]
+                    },
+                    "reciprocity": {
+                      "type": "boolean"
+                    },
+                    "freeState": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                "datums": {
+                  "default": [],
+                  "maxItems": 3,
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[A-Z]{1,2}$"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "letters": {
+                            "minItems": 1,
+                            "maxItems": 3,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "pattern": "^[A-Z]{1,2}$"
+                            }
+                          },
+                          "modifiers": {
+                            "maxItems": 3,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "PD",
+                                "MD",
+                                "LD",
+                                "ACS",
+                                "ALS",
+                                "CF",
+                                "DV",
+                                "PT",
+                                "SL",
+                                "PL"
+                              ]
+                            }
+                          },
+                          "material": {
+                            "type": "string",
+                            "enum": [
+                              "MMR",
+                              "LMR"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "letters"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "characteristic",
+                "zone"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "adjacent": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 999
+              },
+              "unitedFeature": {
+                "type": "boolean"
+              },
+              "between": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{1,2}$"
+                  },
+                  "to": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{1,2}$"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "ACS",
+                  "LD",
+                  "MD",
+                  "PD"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "leader": {
+            "type": "object",
+            "properties": {
+              "vertices": {
+                "minItems": 1,
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 3,
+                  "maxItems": 3
+                }
+              },
+              "terminator": {
+                "type": "string",
+                "enum": [
+                  "arrow",
+                  "dot"
+                ]
+              },
+              "terminatorSize": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "attachment": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "free",
+                      "surface",
+                      "axis"
+                    ]
+                  },
+                  "entityRef": {
+                    "type": "object",
+                    "properties": {
+                      "documentId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "^[A-Za-z0-9_-]+$"
+                      },
+                      "documentEpoch": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "handle": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{1,16}$"
+                      }
+                    },
+                    "required": [
+                      "documentId",
+                      "documentEpoch",
+                      "handle"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "dimension": {
+                    "type": "object",
+                    "properties": {
+                      "documentId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "^[A-Za-z0-9_-]+$"
+                      },
+                      "documentEpoch": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "handle": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{1,16}$"
+                      }
+                    },
+                    "required": [
+                      "documentId",
+                      "documentEpoch",
+                      "handle"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false,
+                "description": "Fields depend on the discriminator; include only fields of the selected variant. The original strict per-variant schema is enforced at execution. kind=free: require no additional required fields; kind=surface: require entityRef; kind=axis: require dimension"
+              },
+              "allAround": {
+                "default": "none",
+                "type": "string",
+                "enum": [
+                  "none",
+                  "all_around",
+                  "all_over"
+                ]
+              }
+            },
+            "required": [
+              "vertices",
+              "terminator",
+              "terminatorSize",
+              "attachment"
+            ],
+            "additionalProperties": false
+          },
           "characteristic": {
             "type": "string",
             "enum": [
@@ -4563,11 +4939,9 @@
             "exclusiveMinimum": 0
           },
           "diameterZone": {
-            "default": false,
             "type": "boolean"
           },
           "materialCondition": {
-            "default": "none",
             "type": "string",
             "enum": [
               "none",
@@ -4576,22 +4950,12 @@
             ]
           },
           "datums": {
-            "default": [],
             "maxItems": 3,
             "type": "array",
             "items": {
               "type": "string",
               "pattern": "^[A-Z]{1,3}$"
             }
-          },
-          "textHeight": {
-            "type": "number",
-            "exclusiveMinimum": 0
-          },
-          "layer": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 255
           }
         },
         "required": [
@@ -4603,8 +4967,6 @@
           "coordinateSystem",
           "lengthUnit",
           "position",
-          "characteristic",
-          "tolerance",
           "textHeight"
         ],
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5542,7 +5904,7 @@
     },
     {
       "name": "acad_create_leader",
-      "description": "Create one native MLEADER: straight leader through explicit WCS XY vertices (first = terminator point on the feature, last = start of the reference line), ISO terminator arrow/dot/none with explicit size, optional horizontal reference line (landingLength 0 disables it) and none/plain text/local block content. Text placement above sits on the reference line; after continues it. Block content connects at its base point at the end of the reference line; only existing non-constant attribute tags can be set. Vertices, terminator, landing and content are read back.",
+      "description": "Create one native MLEADER: straight leader through explicit WCS XY vertices (first = terminator point on the feature, last = start of the reference line), ISO terminator arrow/dot/none with explicit size, optional horizontal reference line (landingLength 0 disables it) and none/plain text/local block content. landingDirection is required except for a bare leader (landingLength 0, content none), which defaults to right. Text placement above sits on the reference line; after continues it. Block content connects at its base point at the end of the reference line; only existing non-constant attribute tags can be set. Vertices, terminator, landing and content are read back.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -5702,7 +6064,6 @@
           "terminator",
           "terminatorSize",
           "landingLength",
-          "landingDirection",
           "content"
         ],
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6083,6 +6444,667 @@
           "textHeight",
           "decimalSeparator",
           "hole"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {}
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "acad_create_datum_feature",
+      "description": "Create an ISO 5459 datum feature indicator as a native MLEADER: datum letter in a square frame (side 2×textHeight, code-generated block with a DATUM attribute) joined by a straight leader to a filled or open datum triangle. vertices[0] is the triangle on the feature, vertices[1] the frame connection; the frame joins on the edge facing the triangle. attachment surface checks that the triangle touches a referenced curve; axis checks that it is in line with a referenced linear/aligned dimension line (median feature); free skips the check. Proportions are pending full-text verification.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentEpoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "coordinateSystem": {
+            "type": "string",
+            "const": "WCS"
+          },
+          "lengthUnit": {
+            "type": "string",
+            "enum": [
+              "mm",
+              "m",
+              "inch",
+              "drawing_unit"
+            ]
+          },
+          "letter": {
+            "type": "string",
+            "pattern": "^[A-Z]{1,2}$"
+          },
+          "triangle": {
+            "type": "string",
+            "enum": [
+              "filled",
+              "open"
+            ]
+          },
+          "triangleSize": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "vertices": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "textHeight": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "style": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "layer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "attachment": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "surface",
+                  "axis"
+                ]
+              },
+              "entityRef": {
+                "type": "object",
+                "properties": {
+                  "documentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "documentEpoch": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "handle": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{1,16}$"
+                  }
+                },
+                "required": [
+                  "documentId",
+                  "documentEpoch",
+                  "handle"
+                ],
+                "additionalProperties": false
+              },
+              "dimension": {
+                "type": "object",
+                "properties": {
+                  "documentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "documentEpoch": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "handle": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{1,16}$"
+                  }
+                },
+                "required": [
+                  "documentId",
+                  "documentEpoch",
+                  "handle"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false,
+            "description": "Fields depend on the discriminator; include only fields of the selected variant. The original strict per-variant schema is enforced at execution. kind=free: require no additional required fields; kind=surface: require entityRef; kind=axis: require dimension"
+          }
+        },
+        "required": [
+          "instanceId",
+          "documentId",
+          "documentEpoch",
+          "operationId",
+          "expectedRevision",
+          "coordinateSystem",
+          "lengthUnit",
+          "letter",
+          "triangle",
+          "triangleSize",
+          "vertices",
+          "textHeight",
+          "attachment"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {}
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "acad_create_general_specification",
+      "description": "Create a general specification note near the title block from explicitly selected references only: ISO 8015, ISO 2768-1 class (f/m/c/v), ISO 14405 Ⓔ, ISO 22081 general size ±deviation, ISO 22081 general geometrical specification (surface profile frame with optional datums, placed below the note) and ISO 10579-NR with an optional restraint line. Nothing is added by default; written decimals are kept exactly. Indication layout is pending full-text verification.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentEpoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "coordinateSystem": {
+            "type": "string",
+            "const": "WCS"
+          },
+          "lengthUnit": {
+            "type": "string",
+            "enum": [
+              "mm",
+              "m",
+              "inch",
+              "drawing_unit"
+            ]
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "textHeight": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "style": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "frameStyle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "decimalSeparator": {
+            "type": "string",
+            "enum": [
+              "comma",
+              "point"
+            ]
+          },
+          "items": {
+            "minItems": 1,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "iso8015",
+                    "iso2768",
+                    "iso14405_envelope",
+                    "iso22081_size",
+                    "iso22081_geometrical",
+                    "iso10579"
+                  ]
+                },
+                "class": {
+                  "type": "string",
+                  "enum": [
+                    "f",
+                    "m",
+                    "c",
+                    "v"
+                  ]
+                },
+                "deviation": {
+                  "type": "string",
+                  "pattern": "^[0-9]{1,4}([.,][0-9]{1,4})?$"
+                },
+                "tolerance": {
+                  "type": "string",
+                  "pattern": "^[0-9]{1,4}([.,][0-9]{1,4})?$"
+                },
+                "datums": {
+                  "default": [],
+                  "maxItems": 3,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{1,2}$"
+                  }
+                },
+                "restraint": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false,
+              "description": "Fields depend on the discriminator; include only fields of the selected variant. The original strict per-variant schema is enforced at execution. kind=iso8015: require no additional required fields; kind=iso2768: require class; kind=iso14405_envelope: require no additional required fields; kind=iso22081_size: require deviation; kind=iso22081_geometrical: require tolerance; kind=iso10579: require no additional required fields"
+            }
+          },
+          "layer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "instanceId",
+          "documentId",
+          "documentEpoch",
+          "operationId",
+          "expectedRevision",
+          "coordinateSystem",
+          "lengthUnit",
+          "position",
+          "textHeight",
+          "decimalSeparator",
+          "items"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {}
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "acad_create_drawing_sheet",
+      "description": "Draw an ISO 5457 drawing sheet in modelspace: frame with a 20 mm filing margin on the left and 10 mm elsewhere and four centring marks for A0-A4 landscape or portrait; origin is the lower-left trimmed-sheet corner; sizes are paper millimetres divided by viewScale (paper-mm/model-mm). Optional edgeLayer also draws the trimmed edge. Returns the frame and titleBlockCorner (frame lower-right). No grid reference system.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentEpoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "coordinateSystem": {
+            "type": "string",
+            "const": "WCS"
+          },
+          "lengthUnit": {
+            "type": "string",
+            "enum": [
+              "mm",
+              "m",
+              "inch",
+              "drawing_unit"
+            ]
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "A0",
+              "A1",
+              "A2",
+              "A3",
+              "A4"
+            ]
+          },
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "landscape",
+              "portrait"
+            ]
+          },
+          "origin": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "viewScale": {
+            "default": 1,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "layer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "edgeLayer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "instanceId",
+          "documentId",
+          "documentEpoch",
+          "operationId",
+          "expectedRevision",
+          "coordinateSystem",
+          "lengthUnit",
+          "size",
+          "orientation",
+          "origin"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {}
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "acad_create_title_block",
+      "description": "Insert the title block layout education_122x31 (122.38 x 30.60 mm, scale, checked by, programme, number, name, ID number, date, title and two institution lines; ISO 5456-2 first/third angle projection symbol, projectionSymbol, on its left) as a signed code-generated block whose lower-right corner sits at corner, normally titleBlockCorner from acad_create_drawing_sheet. Every value is an attribute set only from fields; omitted fields stay empty and must not be invented; later edits use acad_set_attributes (tags TITLE, INSTITUTION, DEPARTMENT, SCALE, CHECKED_BY, PROGRAMME, NUMBER, NAME, ID_NUMBER, DATE). Labels are English as in the template. Text sizes are paper millimetres; use an arial.ttf style for non-ASCII letters.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "documentEpoch": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "coordinateSystem": {
+            "type": "string",
+            "const": "WCS"
+          },
+          "lengthUnit": {
+            "type": "string",
+            "enum": [
+              "mm",
+              "m",
+              "inch",
+              "drawing_unit"
+            ]
+          },
+          "layout": {
+            "type": "string",
+            "const": "education_122x31"
+          },
+          "corner": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "viewScale": {
+            "default": 1,
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "projectionSymbol": {
+            "type": "string",
+            "enum": [
+              "first_angle",
+              "third_angle"
+            ]
+          },
+          "lineGroup": {
+            "default": 0.5,
+            "type": "number",
+            "enum": [
+              0.35,
+              0.5,
+              0.7
+            ]
+          },
+          "textHeight": {
+            "default": 2.5,
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 3.5
+          },
+          "titleHeight": {
+            "default": 5,
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 7
+          },
+          "style": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "layer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "fields": {
+            "default": {},
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "institution": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "department": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "scale": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "checkedBy": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "programme": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "number": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "idNumber": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "date": {
+                "type": "string",
+                "maxLength": 128
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "instanceId",
+          "documentId",
+          "documentEpoch",
+          "operationId",
+          "expectedRevision",
+          "coordinateSystem",
+          "lengthUnit",
+          "layout",
+          "corner",
+          "projectionSymbol"
         ],
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false
