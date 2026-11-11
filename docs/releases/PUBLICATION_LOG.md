@@ -1,5 +1,24 @@
 # Publication log / Yayın günlüğü
 
+## v1.2.0 — 2026-11-12
+
+- Repository: public; Apache-2.0.
+- Release: https://github.com/mustafamertakceylan/Autocad-MCP/releases/tag/v1.2.0
+- Source/tag commit: `b8320aa1fd00c2a2608b20e386fb1af03f3b486c`.
+- Profile: `unsigned-preview`; Windows x64 / full AutoCAD2027 only. Version 1.1.0 skipped by user request.
+- Asset: `Autocad-MCP-1.2.0-Windows-x64.zip`, 38,892,705 bytes, plus SHA256 sidecar.
+- SHA256: `85003dbd43e5d5c8b839301a91da1e56d040014fd7992ce6301a4142951352e4`.
+- Package ID: `01a77b69f2f48482fb461527bcc36c184fc145bf8fecce381bc455d7a3293455`.
+- Draft upload downloaded and verified; published asset downloaded again and verified.
+- Current acceptance: type check; 60 common tests; CTest 2/2; 526 native CAD (15 suites);
+  23 real reconnect; 28 real ZIP installation/rollback/uninstall/native-reopen checks.
+- Node v24.19.0 signature Valid; ARX/desktop EXE NotSigned. Strict signed/clean-machine gate remains false.
+- No SDK/host DLL, drawing, pairing secret, certificate or developer agent reports in the package.
+
+Yayımlanan dosyanın byte hash'i yerel paketle eşleşti. Ayrı temiz Windows,
+gerçek reboot/başlangıç kaydı, gerçek v1.0.0 kurulumundan yükseltme, canlı
+Claude ve Mac kabulü çalıştırılmadı.
+
 ## v1.0.0 — 2026-10-20
 
 - Repository: public; Apache-2.0.
