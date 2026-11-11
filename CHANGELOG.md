@@ -1,6 +1,6 @@
 # Changelog / Sürüm notları
 
-## Unreleased / Yayımlanmadı
+## 1.2.0 — 2026-11-12
 
 ### English
 

@@ -2,7 +2,7 @@
 
 Bu paket Windows x64 ve **tam AutoCAD 2027** içindir. AutoCAD LT, diğer yıllar ve Mac desteklenmez. Node 24 ve çalışma zamanı bağımlılıkları paket içindedir; kullanıcının npm, CMake, Visual Studio veya ObjectARX SDK kurması gerekmez. AutoCAD'in kendi kurulumundaki çalışma zamanı bileşenleri gereklidir.
 
-v1.0.0 kaynak kodu Apache-2.0 lisanslıdır. Windows paketi **imzasız public önizleme** olarak hazırlanır; ayrı temiz Windows kabulü tamamlanmadı. Windows/AutoCAD bilinmeyen yayıncı uyarısı gösterebilir; kullanıcı değerlendirir. SHA256 listesi dosya bozulmasını denetler; yayıncı kimliğini dijital imza gibi doğrulamaz.
+Kaynak kod Apache-2.0 lisanslıdır. Windows paketi **imzasız public önizleme** olarak hazırlanır; ayrı temiz Windows kabulü tamamlanmadı. Windows/AutoCAD bilinmeyen yayıncı uyarısı gösterebilir; kullanıcı değerlendirir. SHA256 listesi dosya bozulmasını denetler; yayıncı kimliğini dijital imza gibi doğrulamaz.
 
 Uygulamadaki **Kurulum rehberi** iki kısa bölüm içerir: **1. AutoCAD'i hazırla** ve **2. MCP'yi bağla**. Ana ekrandaki **MCP rehberi** düğmesi doğrudan ikinci bölümü açar. Her bölümde numaralı adımlar ve ilgili ekrana götüren düğmeler vardır.
 

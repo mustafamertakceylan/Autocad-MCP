@@ -13,7 +13,7 @@ body:
     id: version
     attributes:
       label: Release or commit / Sürüm veya commit
-      placeholder: "v1.0.0 ZIP or source commit / kaynak commit'i"
+      placeholder: "v1.2.0 ZIP or source commit / kaynak commit'i"
     validations:
       required: true
   - type: input

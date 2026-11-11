@@ -6,13 +6,13 @@
 
 **Connect your AI assistant to AutoCAD. Draw, inspect and edit on your own computer.**
 
-[![Download Windows](https://img.shields.io/badge/Download-Windows_x64-D92532?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases/download/v1.0.0/Autocad-MCP-1.0.0-Windows-x64.zip)
-[![v1.0.0](https://img.shields.io/badge/v1.0.0-Windows_preview-25262B?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases)
+[![Download Windows](https://img.shields.io/badge/Download-Windows_x64-D92532?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases/download/v1.2.0/Autocad-MCP-1.2.0-Windows-x64.zip)
+[![v1.2.0](https://img.shields.io/badge/v1.2.0-Windows_preview-25262B?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases)
 [![Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-D92532?style=for-the-badge)](LICENSE)
 
 **English** · [Türkçe](README.tr.md)
 
-[Windows setup](docs/WINDOWS_KURULUM.md) · [52 tools](docs/TOOL_CATALOG.json) · [Build from source](docs/GELISTIRME.md)
+[Windows setup](docs/WINDOWS_KURULUM.md) · [60 tools](docs/TOOL_CATALOG.json) · [Build from source](docs/GELISTIRME.md)
 
 </div>
 
@@ -22,7 +22,7 @@ Autocad MCP is an open-source bridge between full AutoCAD 2027 and Codex, Claude
 
 **Current target: Windows x64 and full AutoCAD 2027.** AutoCAD LT is unsupported. Mac Apple Silicon is a separate development phase; no Mac package is available yet. The application UI is currently Turkish; the README is available in English and Turkish.
 
-**v1.0.0 is an unsigned Windows preview.** Windows/AutoCAD may show publisher or trust prompts. Separate clean-machine acceptance, real reboot/startup and trusted ARX/EXE signing remain unfinished. Review the [release notes](docs/releases/v1.0.0.md) and the SHA256 sidecar before use.
+**v1.2.0 is an unsigned Windows preview.** Windows/AutoCAD may show publisher or trust prompts. Separate clean-machine acceptance, real reboot/startup and trusted ARX/EXE signing remain unfinished. Review the [release notes](docs/releases/v1.2.0.md) and the SHA256 sidecar before use.
 
 ### Get started
 
@@ -43,7 +43,7 @@ For later sessions, keep the same client configuration and connect the AutoCAD s
 - Create sections, BOM/tables, cameras, scaled layouts/PDFs and controlled xrefs.
 - Target an explicit drawing with unit/revision checks; save separate DWG copies and run supported operations in atomic batches.
 
-52 tools do not cover every AutoCAD feature. Surfaces/meshes, arbitrary AutoLISP/commands and remote HTTP access are outside the current scope. Check AI-generated dimensions and projections independently: a successful tool call is not engineering approval. See [support and limits](docs/YETENEK_MATRISI.md).
+60 tools do not cover every AutoCAD feature. Surfaces/meshes, arbitrary AutoLISP/commands and remote HTTP access are outside the current scope. Check AI-generated dimensions and projections independently: a successful tool call is not engineering approval. See [support and limits](docs/YETENEK_MATRISI.md).
 
 ### AI clients and skills
 

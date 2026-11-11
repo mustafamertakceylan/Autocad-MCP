@@ -33,8 +33,8 @@ synthetic reproduction and observed impact. Redact credentials, pairing secrets,
 personal paths and customer data. Never attach `pairing.json`, private keys or
 real customer drawings. Coordinate public disclosure with maintainers.
 
-The published v1.0.0 Windows preview has unsigned ARX/desktop binaries and
-unfinished clean-machine/reboot acceptance; see the [release notes](../docs/releases/v1.0.0.md).
+Published Windows previews (v1.0.0, v1.2.0) have unsigned ARX/desktop binaries and
+unfinished clean-machine/reboot acceptance; see the [release notes](../docs/releases/v1.2.0.md).
 These disclosures do not establish safety or make new integrity issues irrelevant.
 Use the drawing issue form for accuracy problems unless a security boundary fails.
 
@@ -68,8 +68,8 @@ tekrar ve gözlenen etkiyi paylaşın. Kimlik bilgisi, eşleştirme sırrı, ki�
 ve müşteri verilerini çıkarın. `pairing.json`, özel anahtar veya gerçek müşteri
 çizimi eklemeyin. Açıklamanın herkese açılmasını yöneticilerle koordine edin.
 
-v1.0.0 Windows önizlemesindeki ARX/masaüstü ikilileri imzasızdır; temiz cihaz/reboot
-kabulü tamamlanmamıştır. [Sürüm notlarını](../docs/releases/v1.0.0.md) inceleyin.
+v1.0.0 ve v1.2.0 Windows önizlemelerindeki ARX/masaüstü ikilileri imzasızdır; temiz cihaz/reboot
+kabulü tamamlanmamıştır. [Sürüm notlarını](../docs/releases/v1.2.0.md) inceleyin.
 Bu bilinen sınırlar güvenlik garantisi değildir; yeni bütünlük sorunları yine
 bildirilmelidir. Güvenlik sınırı ihlali içermeyen çizim doğruluğu sorunlarında
 çizim issue formunu kullanabilirsiniz.

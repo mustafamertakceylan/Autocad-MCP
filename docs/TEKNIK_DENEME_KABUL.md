@@ -465,3 +465,21 @@ Geliştirmede bulunup düzeltilenler: amgdt.shx'te Ⓔ `{` ve Ⓡ `}` karakterle
 Bulunan ve düzeltilen eksikler: PDF katman renkleriyle basılıyordu (sarı yazı okunmuyordu) → `plotStyle`; TEXT stilin genişlik oranını almıyordu ve hizalama yoktu → `justification` + stil oranı; çap ölçüsü `linePoint`inin yazı konumu olduğu açıklamada yoktu (AutoCAD yazıyı çap doğrusuna oturtur) ve diğer ölçülerde yazı konumu verilemiyordu → açıklama + `textPosition`; referans çizgisiz/içeriksiz leader yön istiyordu; sorgu boş filtre istiyordu; katman aracı açıklaması mevcut çizgi tipini kabul ettiğini söylemiyordu; katılar yalnız Z yönünde çekilebildiği için eğik kol ve Y yönlü delik modellenemiyordu → `profilePlane`. Antet aracında `projection` parametresi sorgu alan listesi denetimiyle çakıştı, `projectionSymbol` olarak adlandırıldı.
 
 **Çalıştırılmadı / sınırlar:** ISO 5457 ızgara referansı ve kesme işaretleri çizilmez. ISO 7200 tam alan seti ayrı düzen olarak yok. Antet etiketleri şablondaki gibi İngilizce. isocp.shx İ/ı/Ş/Ğ basmaz (açıklamada Arial önerilir). Kesit düzlemi işareti için ayrı araç yok (kalın uç + çıplak leader + metin). Görünür masaüstü, hata enjeksiyonu, kurulum paketi, model üzerinden skill davranışı ve Mac çalıştırılmadı. Yeni release üretilmedi.
+
+## 22. v1.2.0 — public Windows önizlemesi
+
+2026-11-12. Kullanıcı "yeni sürüme geçir v1.2" dedi; 1.1.0 atlandı. Yöntem v1.0.0 ile aynı: `public-preview` kanalı, `unsigned-preview` yayın profili. Ürün/CMake/npm/MCP server sürümü 1.2.0; wire protocol `bridgeVersion=0.1.0` korunur.
+
+**Paket:** `Autocad-MCP-1.2.0-Windows-x64.zip`, 38.892.705 byte, 973 dosya. SHA256 `85003dbd43e5d5c8b839301a91da1e56d040014fd7992ce6301a4142951352e4`; paket ID `01a77b69f2f48482fb461527bcc36c184fc145bf8fecce381bc455d7a3293455`; nativeBuildId `e4d08625fa559985ac10b75515554b64223746ce8a009df575081f1e34c9abb2`. Geliştirme bilgisayarında Node 26 kurulu olduğu için paketleyici, v1.0.0 paketindeki resmî Node v24.19.0 ikilisiyle (OpenJS Foundation imzası Valid) çalıştırıldı; paket içi Node ve LICENSE aynı sürümdür.
+
+| v1.2.0 kontrolü | Sonuç / kanıt |
+|---|---|
+| Tip/ortak/C++ | `npm run check`; 60/60 ortak test; CTest 2/2 |
+| `AUTOCAD_MCP_TESTING=OFF` yayın ARX'iyle 15 CAD paketi | 526/526; `tmp/phase5-regressions/2ca8d6fd-1f1a-4d6d-99f6-e830cf3c7eaf/results.json` |
+| Gerçek ZIP kurulum/yükseltme/geri alma/kaldırma/native-reopen | 28/28; `tmp/installation-runs/969da926-f085-4bbe-b982-f13146e2e0ac/results.json` |
+| Yayın ARX'iyle gerçek restart/çoklu hedef | 23/23; `tmp/desktop-runs/947af1e4-d20f-4377-8c8f-c79adcb1191a/results.json` |
+| İmza/lisans/manifest | Node Valid; ARX/EXE NotSigned. Sıkı kapı false; yalnız iki NotSigned ve ayrı temiz cihaz eksikliği var |
+
+İlk kurulum turu kullanıcının açık AutoCAD oturumu nedeniyle bakım öncesi reddedildi (ret koruması beklendiği gibi çalıştı); kullanıcı AutoCAD'i kapattıktan sonra yukarıdaki tur geçti.
+
+Ayrı temiz Windows/VM, gerçek reboot ve başlangıç kaydı, Explorer restart, güncel masaüstü fault suite, gerçek v1.0.0 kurulumundan yükseltme (yükseltme yalnız sentetik ikinci paketle denendi), canlı Claude ve Mac **çalıştırılmadı**. Yayınlanan asset'in indirilen byte hash'i yayın betiğinde doğrulanır; sonuç [yayın günlüğüne](releases/PUBLICATION_LOG.md) yazılır.

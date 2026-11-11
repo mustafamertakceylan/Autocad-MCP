@@ -6,13 +6,13 @@
 
 **AI asistanını AutoCAD'e bağla. Kendi bilgisayarında çiz, incele ve düzenle.**
 
-[![Windows indir](https://img.shields.io/badge/İndir-Windows_x64-D92532?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases/download/v1.0.0/Autocad-MCP-1.0.0-Windows-x64.zip)
-[![v1.0.0](https://img.shields.io/badge/v1.0.0-Windows_önizlemesi-25262B?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases)
+[![Windows indir](https://img.shields.io/badge/İndir-Windows_x64-D92532?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases/download/v1.2.0/Autocad-MCP-1.2.0-Windows-x64.zip)
+[![v1.2.0](https://img.shields.io/badge/v1.2.0-Windows_önizlemesi-25262B?style=for-the-badge)](https://github.com/mustafamertakceylan/Autocad-MCP/releases)
 [![Apache 2.0](https://img.shields.io/badge/Lisans-Apache_2.0-D92532?style=for-the-badge)](LICENSE)
 
 [English](README.md) · **Türkçe**
 
-[Kurulum rehberi](docs/WINDOWS_KURULUM.md) · [52 araç](docs/TOOL_CATALOG.json) · [Derleme](docs/GELISTIRME.md)
+[Kurulum rehberi](docs/WINDOWS_KURULUM.md) · [60 araç](docs/TOOL_CATALOG.json) · [Derleme](docs/GELISTIRME.md)
 
 </div>
 
@@ -22,7 +22,7 @@ Autocad MCP; Codex, Claude Code, OpenCode ve diğer yerel STDIO MCP istemcilerin
 
 **Desteklenen hedef: Windows x64 ve tam AutoCAD 2027.** AutoCAD LT desteklenmez. Mac Apple Silicon ayrı geliştirme fazındadır; henüz Mac paketi yoktur. Uygulama arayüzü şu an Türkçedir; README Türkçe ve İngilizcedir.
 
-**v1.0.0 imzasız Windows önizlemesidir.** Windows/AutoCAD yayıncı veya güven uyarısı gösterebilir. Ayrı temiz bilgisayar kabulü, gerçek reboot/başlangıç ve güvenilir ARX/EXE imzası kontrolleri tamamlanmadı. Kullanmadan önce [sürüm notlarını](docs/releases/v1.0.0.md) ve SHA256 yan dosyasını incele.
+**v1.2.0 imzasız Windows önizlemesidir.** Windows/AutoCAD yayıncı veya güven uyarısı gösterebilir. Ayrı temiz bilgisayar kabulü, gerçek reboot/başlangıç ve güvenilir ARX/EXE imzası kontrolleri tamamlanmadı. Kullanmadan önce [sürüm notlarını](docs/releases/v1.2.0.md) ve SHA256 yan dosyasını incele.
 
 ### Başlangıç
 
@@ -43,7 +43,7 @@ Sonraki kullanımda aynı istemci ayarı geçerlidir. AutoCAD'i açıp oturumu b
 - Kesit, BOM/tablo, kamera, ölçekli pafta/PDF ve kontrollü xref işlemleri yap.
 - Açık belge hedefi, birim ve revision denetimiyle çalış; ayrı DWG kopyası kaydet, desteklenen adımları atomik batch içinde yürüt.
 
-52 araç bütün AutoCAD özelliklerinin desteği anlamına gelmez. Yüzey/mesh, serbest AutoLISP/komut ve uzak HTTP erişimi mevcut kapsamda yoktur. AI'nın ölçü ve görünüş kararlarını ayrıca kontrol et; başarılı MCP işlemi mühendislik doğruluğu veya üretim onayı değildir. [Destek ve sınırlar](docs/YETENEK_MATRISI.md).
+60 araç bütün AutoCAD özelliklerinin desteği anlamına gelmez. Yüzey/mesh, serbest AutoLISP/komut ve uzak HTTP erişimi mevcut kapsamda yoktur. AI'nın ölçü ve görünüş kararlarını ayrıca kontrol et; başarılı MCP işlemi mühendislik doğruluğu veya üretim onayı değildir. [Destek ve sınırlar](docs/YETENEK_MATRISI.md).
 
 ### AI istemcileri ve skill'ler
 
