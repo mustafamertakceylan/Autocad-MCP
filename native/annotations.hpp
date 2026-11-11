@@ -36,11 +36,26 @@ std::string annotation_type(AcDbEntity *e) {
         AcDb3PointAngularDimension::cast(e) || AcDbArcDimension::cast(e) || AcDbOrdinateDimension::cast(e)) return "DIMENSION";
     return {};
 }
+// TEXT justification: horizontal and vertical mode pairs. "left" is the
+// baseline-left default whose insertion point is position(); every other
+// justification is anchored at alignmentPoint().
+const std::vector<std::tuple<std::string, AcDb::TextHorzMode, AcDb::TextVertMode>> &text_justifications() {
+    static const std::vector<std::tuple<std::string, AcDb::TextHorzMode, AcDb::TextVertMode>> values = {
+        {"left", AcDb::kTextLeft, AcDb::kTextBase}, {"center", AcDb::kTextCenter, AcDb::kTextBase}, {"right", AcDb::kTextRight, AcDb::kTextBase},
+        {"middle_left", AcDb::kTextLeft, AcDb::kTextVertMid}, {"middle_center", AcDb::kTextCenter, AcDb::kTextVertMid}, {"middle_right", AcDb::kTextRight, AcDb::kTextVertMid},
+        {"top_left", AcDb::kTextLeft, AcDb::kTextTop}, {"top_center", AcDb::kTextCenter, AcDb::kTextTop}, {"top_right", AcDb::kTextRight, AcDb::kTextTop}};
+    return values;
+}
+std::string text_justification(const AcDbText *t) {
+    for (const auto &[name, h, v] : text_justifications()) if (t->horizontalMode() == h && t->verticalMode() == v) return name;
+    return "other";
+}
 json annotation_geometry(AcDbEntity *e, double f) {
     json out = json::object();
     if (auto t = AcDbText::cast(e)) {
-        AcString value; cad(t->textString(value));
-        out = {{"text",utf8(value.kACharPtr())},{"position",xyz(t->position(),f)},
+        AcString value; cad(t->textString(value));const auto justification = text_justification(t);
+        const auto anchor = justification == "left" || justification == "other" ? t->position() : t->alignmentPoint();
+        out = {{"text",utf8(value.kACharPtr())},{"position",xyz(anchor,f)},{"justification",justification},{"widthFactor",t->widthFactor()},
                {"height",t->height()*f},{"rotation",t->rotation()},{"style",symbol_name(t->textStyle())}};
     }
     if (auto t = AcDbMText::cast(e)) {
@@ -197,8 +212,18 @@ std::string dimension_override(const json &n, wchar_t separator, const std::stri
 }
 void configure_annotation(AcDbEntity *e, AcDbDatabase *db, const json &p, double f) {
     if (auto t=AcDbText::cast(e)) {
-        cad(t->setPosition(point(p,"position",f)));cad(t->setHeight(annotation_number(p,"height")*f));
-        cad(t->setRotation(annotation_number(p,"rotation")));cad(t->setTextStyle(p.contains("style")?named_symbol(db->textStyleTableId(),text(p,"style")):db->textstyle()));
+        const auto at=point(p,"position",f);const auto style=p.contains("style")?named_symbol(db->textStyleTableId(),text(p,"style")):db->textstyle();
+        cad(t->setPosition(at));cad(t->setHeight(annotation_number(p,"height")*f));
+        cad(t->setRotation(annotation_number(p,"rotation")));cad(t->setTextStyle(style));
+        // A TEXT entity keeps its own width factor; take the style's, as the TEXT command does.
+        AcDbTextStyleTableRecord *record=nullptr;cad(acdbOpenObject(record,style,AcDb::kForRead));const double width=record->xScale();record->close();
+        cad(t->setWidthFactor(width));
+        const auto justification=p.value("justification",std::string("left"));bool known=false;
+        for(const auto &[name,h,v]:text_justifications()) if(name==justification){
+            known=true;if(name=="left")break;
+            cad(t->setHorizontalMode(h));cad(t->setVerticalMode(v));cad(t->setAlignmentPoint(at));
+        }
+        need(known,"VALIDATION_FAILED","Unknown text justification");
         cad(t->setTextString(wide(annotation_plain(p,false)).c_str()));
     }
     if (auto t=AcDbMText::cast(e)) {
@@ -236,7 +261,11 @@ void configure_annotation(AcDbEntity *e, AcDbDatabase *db, const json &p, double
             cad(d->setDimtm(-lower));cad(d->setDimtp(upper));
         }
         if(text(p,"kind")=="radius" || text(p,"kind")=="diameter") {
+            // linePoint is the text location of radius and diameter dimensions.
             cad(d->setTextPosition(point(p,"linePoint",f)));cad(d->useSetTextPosition());
+        } else if(p.contains("textPosition")) {
+            // Text placed freely beside an unchanged dimension line (DIMTMOVE 2).
+            auto at=point(p,"textPosition",f);need(at.z==0);cad(d->setDimtmove(2));cad(d->setTextPosition(at));cad(d->useSetTextPosition());
         }
     }
 }
@@ -249,6 +278,7 @@ bool verify_annotation(const std::string &method, const json &p, const json &aft
     if(after.size()!=1)return false;const auto &a=after[0];
     if(p.contains("layer") && a.at("layer")!=p.at("layer"))return false;
     if(p.contains("style") && a.at("style")!=p.at("style"))return false;
+    if(method=="acad_create_text"&&a.at("justification")!=p.value("justification",std::string("left")))return false;
     if(method!="acad_create_dimension") {
         bool ok=annotation_close(a.at("position"),p.at("position"),t)&&a.at("text")==annotation_plain(p,method=="acad_create_mtext")&&
             std::abs(a.at("height").get<double>()-annotation_number(p,"height"))<=t &&
@@ -277,6 +307,7 @@ bool verify_annotation(const std::string &method, const json &p, const json &aft
         auto center=point(p,"center"),requested=point(p,"linePoint"),actual=point(a,"linePoint");
         if(std::abs(center.distanceTo(actual)-center.distanceTo(requested))>t)return false;
     }
+    if(p.contains("textPosition")&&kind!="radius"&&kind!="diameter"&&!annotation_close(a.at("textPosition"),p.at("textPosition"),t))return false;
     const auto notation=p.value("notation",json::object());
     const auto separator=a.at("decimalSeparator").get<std::string>();
     if(a.at("dimensionText")!=dimension_override(notation,static_cast<wchar_t>(separator.empty()?'.':separator[0]),kind)||

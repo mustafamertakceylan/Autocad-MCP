@@ -84,10 +84,13 @@ json create_leader(AcDbDatabase *db, const json &p, const std::string *formatted
     need(terminator == "arrow" || terminator == "dot" || terminator == "none" || (datum && (terminator == "datum_filled" || terminator == "datum_open")));
     const double size = annotation_number(p, "terminatorSize") * f, landing = annotation_number(p, "landingLength") * f;
     need(size > 0 && std::isfinite(size) && landing >= 0 && std::isfinite(landing));
-    const auto side = text(p, "landingDirection");need(side == "left" || side == "right");
+    need(p.contains("content") && p.at("content").is_object());const auto &content = p.at("content");const auto kind = text(content, "kind");
+    // The side only matters for a reference line or content; a bare leader defaults to right.
+    const bool bare = landing == 0 && kind == "none";
+    need(bare || p.contains("landingDirection"), "VALIDATION_FAILED", "landingDirection is required with a reference line or content");
+    const auto side = p.contains("landingDirection") ? text(p, "landingDirection") : std::string("right");need(side == "left" || side == "right");
     const AcGeVector3d direction = side == "right" ? AcGeVector3d::kXAxis : -AcGeVector3d::kXAxis;
     const auto landingEnd = vertices.back() + direction * landing;
-    need(p.contains("content") && p.at("content").is_object());const auto &content = p.at("content");const auto kind = text(content, "kind");
     Transaction tx(db);
     auto ml = std::make_unique<AcDbMLeader>();ml->setDatabaseDefaults(db);
     cad(ml->setMLeaderStyle(db->mleaderstyle()));cad(ml->setEnableAnnotationScale(false));

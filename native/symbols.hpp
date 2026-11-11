@@ -9,11 +9,13 @@ struct SymbolPart {
     bool closed = false;
     double radius = 0, startAngle = 0, endAngle = 0, height = 0;
     std::string text, tag, align = "left";
+    int lineweight = -2; // hundredths of a millimetre; -2 = ByBlock
 };
 struct SymbolSpec {
     std::string id;
     int version = 1;
     std::vector<SymbolPart> parts;
+    std::string style; // text style name; part of the signature only when set
 };
 constexpr const wchar_t *symbol_dictionary_key = L"AUTOCAD_MCP_SYMBOL";
 json symbol_spec_json(const SymbolSpec &spec) {
@@ -26,8 +28,12 @@ json symbol_spec_json(const SymbolSpec &spec) {
         parts.push_back({{"kind", part.kind}, {"points", points}, {"closed", part.closed}, {"radius", r(part.radius)},
                          {"startAngle", r(part.startAngle)}, {"endAngle", r(part.endAngle)}, {"height", r(part.height)},
                          {"text", part.text}, {"tag", part.tag}, {"align", part.align}});
+        // Only explicit weights enter the signature, so ByBlock symbols keep their names.
+        if (part.lineweight != -2) parts.back()["lineweight"] = part.lineweight;
     }
-    return {{"id", spec.id}, {"version", spec.version}, {"parts", parts}};
+    json value = {{"id", spec.id}, {"version", spec.version}, {"parts", parts}};
+    if (!spec.style.empty()) value["style"] = spec.style;
+    return value;
 }
 std::string symbol_hash(const std::string &value) {
     std::uint64_t hash = 14695981039346656037ULL; // FNV-1a: stable across builds, not a security boundary.
@@ -36,7 +42,7 @@ std::string symbol_hash(const std::string &value) {
     return out;
 }
 std::string symbol_block_name(const SymbolSpec &spec) {
-    need(std::regex_match(spec.id, std::regex("[A-Z][A-Z0-9-]{0,47}")) && spec.version > 0 && !spec.parts.empty() && spec.parts.size() <= 64);
+    need(std::regex_match(spec.id, std::regex("[A-Z][A-Z0-9-]{0,47}")) && spec.version > 0 && !spec.parts.empty() && spec.parts.size() <= 64, "EXECUTION_FAILED", "Invalid symbol specification");
     return "MCP-SYM-" + spec.id + "-V" + std::to_string(spec.version) + "-" + symbol_hash(symbol_spec_json(spec).dump()).substr(0, 12);
 }
 std::string symbol_signature(AcDbObject *record, Transaction &tx) {
@@ -95,6 +101,7 @@ std::unique_ptr<AcDbEntity> symbol_entity(AcDbDatabase *db, const SymbolPart &pa
             t = std::move(a);
         } else t = std::make_unique<AcDbText>();
         t->setDatabaseDefaults(db);cad(t->setTextStyle(textStyle));cad(t->setHeight(part.height));
+        {AcDbTextStyleTableRecord *record = nullptr;cad(acdbOpenObject(record, textStyle, AcDb::kForRead));const double width = record->xScale();record->close();cad(t->setWidthFactor(width));}
         cad(t->setTextString(wide(part.text).c_str()));cad(t->setPosition(at(part.points[0])));
         if (part.align != "left") {
             cad(t->setHorizontalMode(part.align == "right" ? AcDb::kTextRight : part.align == "middle" ? AcDb::kTextMid : AcDb::kTextCenter));
@@ -105,7 +112,7 @@ std::unique_ptr<AcDbEntity> symbol_entity(AcDbDatabase *db, const SymbolPart &pa
     e->setDatabaseDefaults(db);
     // Symbol parts follow the inserting entity: layer 0 plus ByBlock properties.
     cad(e->setLayer(L"0"));AcCmColor byBlock;byBlock.setByBlock();cad(e->setColor(byBlock));
-    cad(e->setLinetype(L"ByBlock"));cad(e->setLineWeight(AcDb::kLnWtByBlock));
+    cad(e->setLinetype(L"ByBlock"));cad(e->setLineWeight(static_cast<AcDb::LineWeight>(part.lineweight)));
     return e;
 }
 // Returns the block id; created reports whether this call added the definition.

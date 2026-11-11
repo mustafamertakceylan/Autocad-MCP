@@ -11,6 +11,7 @@ json layout_data(AcDbDatabase *,Transaction &tx,AcDbObjectId id){
     auto layout=tx.get<AcDbLayout>(id);AcString name,media;cad(layout->getName(name));cad(layout->getCanonicalMediaName(media));const ACHAR *device=nullptr;cad(layout->getPlotCfgName(device));double width=0,height=0;cad(layout->getPlotPaperSize(width,height));
     double marginLeft=0,marginBottom=0,marginRight=0,marginTop=0,originX=0,originY=0;cad(layout->getPlotPaperMargins(marginLeft,marginBottom,marginRight,marginTop));cad(layout->getPlotOrigin(originX,originY));
     json value={{"name",utf8(name.kACharPtr())},{"model",static_cast<bool>(layout->modelType())},{"device",utf8(device)},{"media",utf8(media.kACharPtr())},{"paperSizeMm",json::array({width,height})},{"rotation",static_cast<int>(layout->plotRotation())},{"viewports",json::array()},{"entities",json::array()}};
+    const ACHAR *styleSheet=nullptr;cad(layout->getCurrentStyleSheet(styleSheet));value["plotStyle"]=styleSheet?utf8(styleSheet):std::string();
     value["plotMarginsMm"]=json::array({marginLeft,marginBottom,marginRight,marginTop});value["plotOriginMm"]=json::array({originX,originY});value["plotCentered"]=static_cast<bool>(layout->plotCentered());
     if(layout->modelType())return value;
     auto record=tx.get<AcDbBlockTableRecord>(layout->getBlockTableRecordId());AcDbBlockTableRecordIterator *raw=nullptr;cad(record->newIterator(raw));std::unique_ptr<AcDbBlockTableRecordIterator> it(raw);std::size_t count=0;
@@ -51,6 +52,17 @@ json create_layout(AcDbDatabase *db,const json &p){
     // coordinates are absolute millimetres from the lower-left sheet corner.
     double left=0,bottom=0,right=0,top=0;layout_api(settings.getPlotPaperMargins(left,bottom,right,top),"settings.getPlotPaperMargins");
     layout_api(validator->setPlotOrigin(&settings,-left,-bottom),"validator.setAbsolutePaperOrigin");
+    // Colour-dependent plot style table from AutoCAD's own allowlisted set, so
+    // display colours (layer ACI) are not forced onto the paper.
+    if(p.contains("plotStyle")){
+        const auto style=text(p,"plotStyle");need(style=="monochrome.ctb"||style=="Grayscale.ctb"||style=="acad.ctb","VALIDATION_FAILED","Unsupported plot style");
+        need(db->plotStyleMode(),"VALIDATION_FAILED","Drawing uses named plot styles; colour-dependent .ctb tables do not apply");
+        AcArray<const ACHAR*> sheets;cad(validator->plotStyleSheetList(sheets));bool found=false;
+        for(int i=0;i<sheets.length();++i)found|=_wcsicmp(sheets[i],wide(style).c_str())==0;
+        need(found,"UNSUPPORTED_ON_PLATFORM","Plot style table is not installed");
+        layout_api(validator->setCurrentStyleSheet(&settings,wide(style).c_str()),"validator.setCurrentStyleSheet");
+        settings.setPlotPlotStyles(true);settings.setPrintLineweights(true);
+    }
     need(p.contains("viewport")&&p.at("viewport").is_object()&&p.at("viewport").size()==5);const auto &v=p.at("viewport");
     auto pair=[&](const char *key){const auto &a=v.at(key);need(a.is_array()&&a.size()==2&&a[0].is_number()&&a[1].is_number());double x=a[0].get<double>(),y=a[1].get<double>();need(x>0&&y>0&&std::isfinite(x)&&std::isfinite(y));return AcGePoint2d(x,y);};
     auto center=pair("paperCenter"),size=pair("paperSize");auto target=point(v,"modelCenter",input_factor(db,p));double scale=annotation_number(v,"scale")*drawing_metres(db)*1000;need(scale>0&&std::isfinite(scale));double width=0,height=0;layout_api(settings.getPlotPaperSize(width,height),"settings.getPlotPaperSize");if(rotation=="90")std::swap(width,height);

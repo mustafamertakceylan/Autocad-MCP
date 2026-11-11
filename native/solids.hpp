@@ -65,6 +65,15 @@ json edit_solids(AcDbDatabase *db,const std::string &method,const json &p){
         if(method=="acad_extrude"){
             double height=annotation_number(p,"height")*f;need(std::isfinite(height)&&height!=0);AcDbSweepOptions options;
             cad(created->createExtrudedSolid(region,AcGeVector3d(0,0,height),options));
+            // profilePlane maps the XY profile (x, y) into a vertical plane:
+            // XZ -> (x, 0, y) extruded along +Y*height; YZ -> (0, x, y) along +X*height.
+            const auto plane=p.value("profilePlane",std::string("XY"));need(plane=="XY"||plane=="XZ"||plane=="YZ","VALIDATION_FAILED","profilePlane must be XY, XZ or YZ");
+            if(plane!="XY"){
+                AcGeMatrix3d m;
+                if(plane=="XZ")m.setCoordSystem(AcGePoint3d::kOrigin,AcGeVector3d::kXAxis,AcGeVector3d::kZAxis,AcGeVector3d::kYAxis);
+                else m.setCoordSystem(AcGePoint3d::kOrigin,AcGeVector3d::kYAxis,AcGeVector3d::kZAxis,AcGeVector3d::kXAxis);
+                cad(created->transformBy(m),"Profile plane transform");
+            }
         }else{
             need(method=="acad_revolve");auto a=point(p,"axisStart",f),b=point(p,"axisEnd",f);need(a.z==0&&b.z==0&&a.distanceTo(b)>1e-9);
             double angle=annotation_number(p,"angle");need(angle>0&&angle<=2*3.141592653589793);AcDbRevolveOptions options;
