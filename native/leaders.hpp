@@ -6,9 +6,17 @@ std::string leader_terminator(AcDbObjectId arrow) {
     // Built-in arrowheads live in the block table under their global names.
     auto name = symbol_name(arrow);
     std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
-    return name == "_DOT" ? "dot" : name == "_NONE" ? "none" : "other:" + name;
+    return name == "_DOT" ? "dot" : name == "_NONE" ? "none" : name == "_DATUMFILLED" ? "datum_filled" : name == "_DATUMBLANK" ? "datum_open" : "other:" + name;
 }
+std::string id_handle(AcDbObjectId id);
 json leader_geometry(AcDbEntity *e, double f) {
+    // Classic LEADER: only created as the associated leader of a tolerance frame.
+    if (auto l = AcDbLeader::cast(e)) {
+        need(l->numVertices() <= 64, "DOC_BUSY", "Leader vertex query limit reached");json vertices = json::array();
+        for (int i = 0; i < l->numVertices(); ++i) vertices.push_back(xyz(l->vertexAt(i), f));
+        return {{"vertices", vertices}, {"annotation", l->annotationObjId().isNull() ? json(nullptr) : json(id_handle(l->annotationObjId()))},
+                {"terminator", l->hasArrowHead() ? leader_terminator(l->dimldrblk()) : "none"}, {"terminatorSize", l->dimasz() * f}, {"hookLine", static_cast<bool>(l->hasHookLine())}};
+    }
     auto ml = AcDbMLeader::cast(e);
     if (!ml) return json::object();
     AcArray<int> lines;cad(ml->getLeaderLineIndexes(lines));
@@ -60,8 +68,11 @@ json leader_geometry(AcDbEntity *e, double f) {
     return out;
 }
 // formatted: internal callers (hole callouts) pass prebuilt MText with symbol
-// font switches; MCP text content is always escaped plain text.
-json create_leader(AcDbDatabase *db, const json &p, const std::string *formatted = nullptr) {
+// font switches; MCP text content is always escaped plain text. Internal
+// callers (datum features) may use the datum triangle terminators and add
+// entities in the same transaction; those are verified with the leader.
+using LeaderExtra = std::function<void(Transaction &, json &, std::vector<AcDbObjectId> &, std::vector<json> &)>;
+json create_leader(AcDbDatabase *db, const json &p, const std::string *formatted = nullptr, bool datum = false, const LeaderExtra &extra = {}) {
     auto &s = state(db);need(s.revision == number(p, "expectedRevision"), "STALE_REVISION", "Drawing changed before leader creation");
     const double f = input_factor(db, p), out = output_factor(db, p);
     need(p.contains("vertices") && p.at("vertices").is_array() && p.at("vertices").size() >= 2 && p.at("vertices").size() <= 16);
@@ -69,7 +80,8 @@ json create_leader(AcDbDatabase *db, const json &p, const std::string *formatted
     for (const auto &value : p.at("vertices")) {
         auto v = point(json{{"value", value}}, "value", f);need(v.z == 0 && (vertices.empty() || v.distanceTo(vertices.back()) > 1e-12));vertices.push_back(v);
     }
-    const auto terminator = text(p, "terminator");need(terminator == "arrow" || terminator == "dot" || terminator == "none");
+    const auto terminator = text(p, "terminator");
+    need(terminator == "arrow" || terminator == "dot" || terminator == "none" || (datum && (terminator == "datum_filled" || terminator == "datum_open")));
     const double size = annotation_number(p, "terminatorSize") * f, landing = annotation_number(p, "landingLength") * f;
     need(size > 0 && std::isfinite(size) && landing >= 0 && std::isfinite(landing));
     const auto side = text(p, "landingDirection");need(side == "left" || side == "right");
@@ -129,13 +141,15 @@ json create_leader(AcDbDatabase *db, const json &p, const std::string *formatted
     auto result = identity(db);result["operationId"] = text(p, "operationId");result["status"] = "succeeded";result["applied"] = true;result["verified"] = false;result["error"] = nullptr;
     result["created"] = json::array();result["modified"] = json::array();result["erased"] = json::array();
     auto model = tx.get<AcDbBlockTableRecord>(acdbSymUtil()->blockModelSpaceId(db), AcDb::kForWrite);AcDbObjectId id;json expected;
+    std::vector<AcDbObjectId> extraIds;std::vector<json> extraExpected;
     s.writing = true;
     try {
         check_cancel();
         // Built-in dot/none arrow blocks are created on first use. They are
         // fetched only after every argument has been validated.
         AcDbObjectId arrow;
-        if (terminator != "arrow") cad(AcDmUtil::getArrowId(terminator == "dot" ? L"_DOT" : L"_NONE", arrow, db), "Arrow block");
+        if (terminator != "arrow")
+            cad(AcDmUtil::getArrowId(terminator == "dot" ? L"_DOT" : terminator == "none" ? L"_NONE" : terminator == "datum_filled" ? L"_DATUMFILLED" : L"_DATUMBLANK", arrow, db), "Arrow block");
         cad(ml->setArrowSymbolId(arrow));
         cad(model->appendAcDbEntity(id, ml.get()));auto e = ml.release();cad(tx.manager->addNewlyCreatedDBRObject(e, true));
         if (kind == "block") {
@@ -167,14 +181,21 @@ json create_leader(AcDbDatabase *db, const json &p, const std::string *formatted
         if (kind == "text" && formatted) need(expected.at("formattedText") == *formatted, "VERIFICATION_FAILED", "Leader callout differs before commit");
         else if (kind == "text") need(expected.at("text") == expectedText, "VERIFICATION_FAILED", "Leader text differs before commit");
         if (kind == "block") need(expected.at("attributes") == expectedAttributes, "VERIFICATION_FAILED", "Leader attributes differ before commit");
-        result["created"].push_back(ref(db, e));test_fault("abort_before_commit");check_cancel();tx.commit();s.writing = false;s.revision++;cursors.clear();
+        result["created"].push_back(ref(db, e));
+        if (extra) extra(tx, result, extraIds, extraExpected);
+        test_fault("abort_before_commit");check_cancel();tx.commit();s.writing = false;s.revision++;cursors.clear();
     } catch (...) {s.writing = false;throw;}
     result["revision"] = s.revision;
     try {
-        Transaction read(db);auto actual = geometry(read.get<AcDbEntity>(id), out);read.commit();
+        Transaction read(db);auto actual = geometry(read.get<AcDbEntity>(id), out);
         actual.erase("extents");auto compare = expected;compare.erase("extents");
-        need(same_geometry(compare, actual), "VERIFICATION_FAILED");result["verified"] = true;
-        result["observedGeometry"] = {{"items", json::array({actual})}, {"lengthUnit", p.at("lengthUnit")}, {"coordinateSystem", "WCS"}};
+        need(same_geometry(compare, actual), "VERIFICATION_FAILED");json items = json::array({actual});
+        for (std::size_t i = 0; i < extraIds.size(); ++i) {
+            auto more = geometry(read.get<AcDbEntity>(extraIds[i]), out), wanted = extraExpected[i];more.erase("extents");wanted.erase("extents");
+            need(same_geometry(wanted, more), "VERIFICATION_FAILED");items.push_back(more);
+        }
+        read.commit();result["verified"] = true;
+        result["observedGeometry"] = {{"items", items}, {"lengthUnit", p.at("lengthUnit")}, {"coordinateSystem", "WCS"}};
     } catch (...) {
         result["status"] = "failed";result["error"] = {{"code", "VERIFICATION_FAILED"}, {"message", "Committed leader could not be verified"}, {"retryable", false}};
     }

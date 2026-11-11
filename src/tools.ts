@@ -10,8 +10,8 @@ const geom = { coordinateSystem: z.literal('WCS'), lengthUnit: unit };
 const mutation = { ...target, operationId: id, expectedRevision: integer };
 const entityRef = z.strictObject({ documentId: id, documentEpoch: integer.min(1), handle: z.string().regex(/^[0-9a-fA-F]{1,16}$/) });
 const targets = z.array(entityRef).min(1).max(100);
-const entityType = z.enum(['LINE', 'CIRCLE', '3DSOLID', 'TEXT', 'MTEXT', 'DIMENSION', 'ARC', 'LWPOLYLINE', 'INSERT','HATCH','REGION','TABLE','FCF','MLEADER']);
-const projection = z.array(z.enum(['handle', 'type', 'layer', 'start', 'end', 'center', 'radius', 'size', 'extents', 'volume', 'text', 'position', 'height', 'width', 'rotation', 'dimensionKind', 'measurement', 'displayValue', 'dimensionScale', 'textPosition', 'linePoint', 'textHeight', 'arrowSize', 'precision', 'tolerance', 'leaderLength', 'style', 'vertices', 'bulges', 'closed', 'length', 'area', 'startAngle', 'endAngle', 'blockName', 'scale', 'attributes', 'attributeGeometry','pattern','patternScale','patternAngle','loopCount','rows','columnWidths','rowHeights','externalReference','leaderLineCount','terminator','terminatorSize','landingLength','landingDirection','contentKind','symbol','contentConnection','dimensionText','basic','limits','suppressed','decimalSeparator','measurementUnit','start2','end2','axis','origin','formattedText','trailingZeros','tolerancePrecision'])).min(1).max(64);
+const entityType = z.enum(['LINE', 'CIRCLE', '3DSOLID', 'TEXT', 'MTEXT', 'DIMENSION', 'ARC', 'LWPOLYLINE', 'INSERT','HATCH','REGION','TABLE','FCF','MLEADER','LEADER']);
+const projection = z.array(z.enum(['handle', 'type', 'layer', 'start', 'end', 'center', 'radius', 'size', 'extents', 'volume', 'text', 'position', 'height', 'width', 'rotation', 'dimensionKind', 'measurement', 'displayValue', 'dimensionScale', 'textPosition', 'linePoint', 'textHeight', 'arrowSize', 'precision', 'tolerance', 'leaderLength', 'style', 'vertices', 'bulges', 'closed', 'length', 'area', 'startAngle', 'endAngle', 'blockName', 'scale', 'attributes', 'attributeGeometry','pattern','patternScale','patternAngle','loopCount','rows','columnWidths','rowHeights','externalReference','leaderLineCount','terminator','terminatorSize','landingLength','landingDirection','contentKind','symbol','contentConnection','dimensionText','basic','limits','suppressed','decimalSeparator','measurementUnit','start2','end2','axis','origin','formattedText','trailingZeros','tolerancePrecision','annotation','hookLine'])).min(1).max(64);
 const readGeom = { coordinateSystem: z.literal('WCS'), lengthUnit: unit.default('drawing_unit'), projection: projection.optional() };
 const layer = z.string().min(1).max(255).optional();
 const xy = point.refine(p => p[2] === 0, 'Only WCS XY annotation is supported');
@@ -89,6 +89,52 @@ const holeCallout=z.strictObject({count:z.number().int().min(2).max(999).optiona
  .refine(h=>!h.counterbore||(h.diameter!==undefined&&writtenNumber(h.counterbore.diameter)>writtenNumber(h.diameter)),'Counterbore must be wider than the hole')
  .refine(h=>!h.countersink||(h.diameter!==undefined&&writtenNumber(h.countersink.diameter)>writtenNumber(h.diameter)),'Countersink must be wider than the hole');
 
+// ISO geometrical tolerancing (ISO 1101, 5458, 2692, 5459, 10579, 22081). Values are written decimals.
+const datumLetter=z.string().regex(/^[A-Z]{1,2}$/,'Datum letters are one or two capitals');
+const gdtCharacteristic=z.enum(['straightness','flatness','roundness','cylindricity','line_profile','surface_profile','parallelism','perpendicularity','angularity','position','concentricity','coaxiality','symmetry','circular_runout','total_runout']);
+const formCharacteristics=['straightness','flatness','roundness','cylindricity'],datumCharacteristics=['parallelism','perpendicularity','angularity','concentricity','coaxiality','symmetry','circular_runout','total_runout'];
+const toleranceZone=z.strictObject({value:writtenSize,shape:z.enum(['diameter','spherical_diameter']).optional(),combined:z.enum(['CZ','SZ','CZR','SIM']).optional(),
+ offset:writtenDeviation.refine(s=>writtenNumber(s)!==0,'UZ offset must be nonzero').optional(),constraint:z.enum(['OZ','VA']).optional(),derived:z.boolean().optional(),
+ projected:writtenSize.optional(),material:z.enum(['MMR','LMR']).optional(),reciprocity:z.boolean().optional(),freeState:z.boolean().optional()})
+ .refine(v=>!v.reciprocity||v.material!==undefined,'Reciprocity requires MMR or LMR');
+const datumReference=z.union([datumLetter,z.strictObject({letters:z.array(datumLetter).min(1).max(3).refine(a=>new Set(a).size===a.length,'Duplicate datum letter'),
+ modifiers:z.array(z.enum(['PD','MD','LD','ACS','ALS','CF','DV','PT','SL','PL'])).max(3).refine(a=>new Set(a).size===a.length,'Duplicate datum modifier').optional(),material:z.enum(['MMR','LMR']).optional()})]);
+const frameRow=z.strictObject({characteristic:gdtCharacteristic,zone:toleranceZone,datums:z.array(datumReference).max(3).default([])})
+ .refine(r=>!formCharacteristics.includes(r.characteristic)||r.datums.length===0,'Form tolerances take no datum')
+ .refine(r=>!datumCharacteristics.includes(r.characteristic)||r.datums.length>0,'This characteristic requires a datum');
+const attachment=z.discriminatedUnion('kind',[
+ z.strictObject({kind:z.literal('free')}),
+ z.strictObject({kind:z.literal('surface'),entityRef}),
+ z.strictObject({kind:z.literal('axis'),dimension:entityRef})
+]);
+const frameLeader=z.strictObject({vertices:z.array(xy).min(1).max(8),terminator:z.enum(['arrow','dot']),terminatorSize:z.number().positive().finite(),attachment,allAround:z.enum(['none','all_around','all_over']).default('none')})
+ .refine(l=>l.vertices.every((v,i)=>i===0||differ(v,l.vertices[i-1]!)),'Consecutive leader vertices must differ').refine(l=>l.allAround==='none'||l.vertices.length>=2,'All-around symbols sit on a leader bend; give a bend vertex');
+const adjacentIndication=z.strictObject({count:z.number().int().min(2).max(999).optional(),unitedFeature:z.boolean().optional(),between:z.strictObject({from:datumLetter,to:datumLetter}).refine(b=>b.from!==b.to,'Between needs two different letters').optional(),scope:z.enum(['ACS','LD','MD','PD']).optional()})
+ .refine(a=>a.count!==undefined||a.unitedFeature||a.between||a.scope,'Give at least one adjacent indication');
+// One object schema (clients handle a flat object best): ISO rows, or the original single-line fields.
+const frameSchema=z.strictObject({...mutation,...geom,position:xy,textHeight:z.number().positive().finite(),layer,
+ style:layerName.optional(),decimalSeparator:z.enum(['comma','point']).optional(),rows:z.array(frameRow).min(1).max(3).optional(),adjacent:adjacentIndication.optional(),leader:frameLeader.optional(),
+ characteristic:z.enum(['position','parallelism','perpendicularity','angularity','flatness','roundness','cylindricity','straightness','surface_profile','line_profile','circular_runout','total_runout']).optional(),
+ tolerance:z.number().positive().finite().optional(),diameterZone:z.boolean().optional(),materialCondition:z.enum(['none','MMC','LMC']).optional(),datums:z.array(z.string().regex(/^[A-Z]{1,3}$/)).max(3).optional()})
+ .superRefine((p,ctx)=>{
+  const issue=(message:string)=>ctx.addIssue({code:'custom',message});
+  if(p.rows){
+   if(!p.decimalSeparator)issue('ISO rows need decimalSeparator');
+   if(p.characteristic!==undefined||p.tolerance!==undefined||p.diameterZone!==undefined||p.materialCondition!==undefined||p.datums!==undefined)issue('Use rows or the single-line fields, not both');
+  }else{
+   if(p.characteristic===undefined||p.tolerance===undefined)issue('Give rows, or characteristic and tolerance');
+   if(p.style!==undefined||p.decimalSeparator!==undefined||p.adjacent!==undefined||p.leader!==undefined)issue('style, decimalSeparator, adjacent and leader need rows');
+  }
+ });
+const generalItem=z.discriminatedUnion('kind',[
+ z.strictObject({kind:z.literal('iso8015')}),
+ z.strictObject({kind:z.literal('iso2768'),class:z.enum(['f','m','c','v'])}),
+ z.strictObject({kind:z.literal('iso14405_envelope')}),
+ z.strictObject({kind:z.literal('iso22081_size'),deviation:writtenSize}),
+ z.strictObject({kind:z.literal('iso22081_geometrical'),tolerance:writtenSize,datums:z.array(datumLetter).max(3).refine(a=>new Set(a).size===a.length,'Duplicate datum letter').default([])}),
+ z.strictObject({kind:z.literal('iso10579'),restraint:plainText.refine(s=>s.length<=256&&!/[\r\n]/.test(s),'One line of at most 256 characters').optional()})
+]);
+
 export const toolSchemas = {
   acad_list_instances: z.strictObject({}),
   acad_get_status: z.strictObject({ instanceId: id }),
@@ -142,7 +188,7 @@ export const toolSchemas = {
     z.strictObject({kind:z.literal('countersink'),diameter:z.number().positive().finite(),depth:z.number().positive().finite()})
   ]).default({kind:'plain'})}).refine(p=>p.entry.kind==='plain'||(p.entry.diameter>p.diameter&&p.entry.depth<=p.depth),'Entry diameter must exceed the hole; entry depth cannot exceed total depth'),
   acad_create_shaft: z.strictObject({...mutation,...geom,base:point,segments:z.array(z.strictObject({length:z.number().positive().finite(),diameter:z.number().positive().finite()})).min(1).max(32),layer}),
-  acad_create_feature_control_frame: z.strictObject({...mutation,...geom,position:xy,characteristic:z.enum(['position','parallelism','perpendicularity','angularity','flatness','roundness','cylindricity','straightness','surface_profile','line_profile','circular_runout','total_runout']),tolerance:z.number().positive().finite(),diameterZone:z.boolean().default(false),materialCondition:z.enum(['none','MMC','LMC']).default('none'),datums:z.array(z.string().regex(/^[A-Z]{1,3}$/)).max(3).default([]),textHeight:z.number().positive().finite(),layer}),
+  acad_create_feature_control_frame: frameSchema,
   acad_move_entities: z.strictObject({ ...mutation, ...geom, targets, delta: point }),
   acad_transform_entities: z.discriminatedUnion('mode',[
     z.strictObject({...mutation,...geom,targets,mode:z.literal('copy'),delta:xy}),
@@ -169,12 +215,15 @@ export const toolSchemas = {
    .refine(p=>p.points.every((v,i)=>{if(i===0)return true;const o=p.mode==='chain'?p.points[i-1]!:p.points[0]!;return Math.abs((v[0]-o[0])*Math.cos(p.rotation)+(v[1]-o[1])*Math.sin(p.rotation))>1e-9;}),'Every dimension needs a nonzero projected length'),
   acad_create_hole_callout: z.strictObject({...mutation,...geom,vertices:z.array(xy).min(2).max(16),terminator:z.enum(['arrow','dot','none']),terminatorSize:z.number().positive().finite(),landingLength:z.number().nonnegative().finite(),landingDirection:z.enum(['left','right']),textHeight:z.number().positive().finite(),style:layerName.optional(),layer,decimalSeparator:z.enum(['comma','point']),hole:holeCallout,circle:entityRef.optional()})
    .refine(p=>p.vertices.every((v,i)=>i===0||differ(v,p.vertices[i-1]!)),'Consecutive leader vertices must differ').refine(p=>!p.circle||p.hole.diameter!==undefined,'A circle check needs the hole diameter'),
+  acad_create_datum_feature: z.strictObject({...mutation,...geom,letter:datumLetter,triangle:z.enum(['filled','open']),triangleSize:z.number().positive().finite(),vertices:z.tuple([xy,xy]),textHeight:z.number().positive().finite(),style:layerName.optional(),layer,attachment})
+   .refine(p=>differ(p.vertices[0],p.vertices[1]),'Datum leader points must differ'),
+  acad_create_general_specification: z.strictObject({...mutation,...geom,position:xy,textHeight:z.number().positive().finite(),style:layerName.optional(),frameStyle:layerName.optional(),decimalSeparator:z.enum(['comma','point']),items:z.array(generalItem).min(1).max(6).refine(a=>new Set(a.map(i=>i.kind)).size===a.length,'Each general specification kind appears once'),layer}),
   acad_get_operation_status: z.strictObject({ ...target, operationId: id }),
   acad_save_copy: z.strictObject({ ...mutation, outputRootId: id, relativePath: z.string().min(1).max(4096), overwrite: z.literal(false) })
 };
 export type ToolName = keyof typeof toolSchemas;
 export const toolNames = Object.keys(toolSchemas) as ToolName[];
-export const mutating = new Set<ToolName>(['acad_create_dimension_series','acad_create_hole_callout','acad_setup_drawing_standard','acad_create_leader','acad_set_view','acad_run_batch','acad_attach_xref','acad_manage_xref','acad_create_layout','acad_export_pdf','acad_drill_holes','acad_create_shaft','acad_create_feature_control_frame','acad_section_solid','acad_create_hatch','acad_create_table','acad_extrude','acad_revolve','acad_boolean','acad_create_line', 'acad_create_circle', 'acad_create_arc', 'acad_create_polyline', 'acad_create_box', 'acad_create_layer', 'acad_create_style', 'acad_define_block', 'acad_insert_block', 'acad_set_attributes', 'acad_create_text', 'acad_create_mtext', 'acad_create_dimension', 'acad_move_entities', 'acad_transform_entities', 'acad_offset_entity', 'acad_edit_curve', 'acad_corner', 'acad_erase_entities', 'acad_save_copy']);
+export const mutating = new Set<ToolName>(['acad_create_datum_feature','acad_create_general_specification','acad_create_dimension_series','acad_create_hole_callout','acad_setup_drawing_standard','acad_create_leader','acad_set_view','acad_run_batch','acad_attach_xref','acad_manage_xref','acad_create_layout','acad_export_pdf','acad_drill_holes','acad_create_shaft','acad_create_feature_control_frame','acad_section_solid','acad_create_hatch','acad_create_table','acad_extrude','acad_revolve','acad_boolean','acad_create_line', 'acad_create_circle', 'acad_create_arc', 'acad_create_polyline', 'acad_create_box', 'acad_create_layer', 'acad_create_style', 'acad_define_block', 'acad_insert_block', 'acad_set_attributes', 'acad_create_text', 'acad_create_mtext', 'acad_create_dimension', 'acad_move_entities', 'acad_transform_entities', 'acad_offset_entity', 'acad_edit_curve', 'acad_corner', 'acad_erase_entities', 'acad_save_copy']);
 export const descriptions: Record<ToolName, string> = {
   acad_list_instances: 'List explicitly paired local AutoCAD instances. No active-tab fallback.',
   acad_get_status: 'Read bridge/backend status; simulated backends are identified explicitly.',
@@ -219,7 +268,9 @@ export const descriptions: Record<ToolName, string> = {
   acad_get_bom: 'Read selected modelspace INSERT attributes and group identical block names and explicit attribute keys with quantities. Missing keys fail explicitly; nested contents are not expanded. Read only, no inferred material or standard part data.',
   acad_drill_holes: 'Cut up to 64 explicit cylindrical holes along +Z or -Z in one solid, with optional explicit counterbore or conical countersink entry. Centers are entry-plane WCS points. Every hole must remove material; failure preserves all source geometry. Returns a new solid entityRef and measured removed volume. No thread geometry or inferred fastener standards.',
   acad_create_shaft: 'Create one stepped coaxial solid along +Z from an explicit base and up to 32 length/diameter segments. No inferred standard sizes; no persistent parametric constraints.',
-  acad_create_feature_control_frame: 'Create one native FCF geometric tolerance frame with an explicit characteristic, tolerance, optional diameter/material condition and up to three datum labels. Dimensions use lengthUnit. This encodes the chosen annotation; it does not validate the engineering choice or certify ISO compliance.',
+  acad_create_feature_control_frame: 'Create a native FCF geometric tolerance frame (ISO 1101). Preferred ISO form: rows (1-3 stacked frames) with one of the 14 characteristic symbols (concentricity and coaxiality share one), a tolerance zone written as stated ("0,05", "0,050") with optional Ø/SØ, CZ/SZ/CZR/SIM (ISO 5458), UZ offset, OZ/VA, derived feature Ⓐ, projected zone Ⓟ+length, MMR Ⓜ/LMR Ⓛ (ISO 2692) with reciprocity Ⓡ and free state Ⓕ (ISO 10579), and up to three datum compartments (letter, common datum A-B, ISO 5459 modifiers such as [CF] [PL] and Ⓜ/Ⓛ). Form tolerances take no datum; orientation, coaxiality/concentricity, symmetry and runout require one. Optional adjacent indications above the frame (n×, UF, between A↔B, ACS/LD/MD/PD) and an associated native LEADER: vertices are the point on the feature then optional bends, and AutoCAD joins the frame end facing the last bend (the leader must not cross the frame); the feature point is checked (surface: on a referenced curve; axis or median feature: in line with a referenced linear/aligned dimension line, checked), arrow or dot, optional all-around/all-over circle on the leader bend. The legacy single-line form (numeric tolerance, MMC/LMC) stays accepted. Values come only from the request; written decimals are kept exactly and do not by themselves define a tolerance. This encodes the chosen annotation; it does not validate the engineering choice or certify ISO compliance; modifier order and symbol proportions are pending full-text verification.',
+  acad_create_datum_feature: 'Create an ISO 5459 datum feature indicator as a native MLEADER: datum letter in a square frame (side 2×textHeight, code-generated block with a DATUM attribute) joined by a straight leader to a filled or open datum triangle. vertices[0] is the triangle on the feature, vertices[1] the frame connection; the frame joins on the edge facing the triangle. attachment surface checks that the triangle touches a referenced curve; axis checks that it is in line with a referenced linear/aligned dimension line (median feature); free skips the check. Proportions are pending full-text verification.',
+  acad_create_general_specification: 'Create a general specification note near the title block from explicitly selected references only: ISO 8015, ISO 2768-1 class (f/m/c/v), ISO 14405 Ⓔ, ISO 22081 general size ±deviation, ISO 22081 general geometrical specification (surface profile frame with optional datums, placed below the note) and ISO 10579-NR with an optional restraint line. Nothing is added by default; written decimals are kept exactly. Indication layout is pending full-text verification.',
   acad_move_entities: 'Translate explicitly referenced native entities and verify resulting geometry.',
   acad_transform_entities: 'Copy, rotate, uniformly scale, mirror, or make linear/circular arrays of WCS XY LINE/CIRCLE/ARC/LWPOLYLINE entities. Angles are radians; count includes the original; at most 100 created copies. Dimensions/text/solids are intentionally excluded. Entity geometry is reread after one transaction.',
   acad_offset_entity: 'Offset a WCS XY LINE/CIRCLE/ARC/LWPOLYLINE a positive distance toward sidePoint; source is preserved. Ambiguous or impossible offsets are rejected; result curves are verified.',
@@ -236,7 +287,8 @@ export const descriptions: Record<ToolName, string> = {
 
 export function validateTool(name: ToolName, input: unknown): Record<string, unknown> {
   const parsed = toolSchemas[name].parse(input) as Record<string, unknown>;
-  const refs = [...((parsed.targets ?? (parsed.entityRef ? [parsed.entityRef] : [])) as Array<z.infer<typeof entityRef>>), ...((parsed.boundaries??[]) as Array<z.infer<typeof entityRef>>), ...((parsed.tools??[]) as Array<z.infer<typeof entityRef>>), ...(parsed.circle ? [parsed.circle as z.infer<typeof entityRef>] : [])];
+  const attached = (parsed.attachment ?? (parsed.leader as { attachment?: unknown } | undefined)?.attachment) as { entityRef?: z.infer<typeof entityRef>; dimension?: z.infer<typeof entityRef> } | undefined;
+  const refs = [...((parsed.targets ?? (parsed.entityRef ? [parsed.entityRef] : [])) as Array<z.infer<typeof entityRef>>), ...((parsed.boundaries??[]) as Array<z.infer<typeof entityRef>>), ...((parsed.tools??[]) as Array<z.infer<typeof entityRef>>), ...(parsed.circle ? [parsed.circle as z.infer<typeof entityRef>] : []), ...(attached?.entityRef ? [attached.entityRef] : []), ...(attached?.dimension ? [attached.dimension] : [])];
   const unique = new Set<string>();
   for (const ref of refs) {
     const key = ref.handle.toUpperCase();

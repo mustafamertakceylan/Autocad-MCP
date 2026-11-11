@@ -50,14 +50,6 @@ json create_detailing(AcDbDatabase *db,const std::string &method,const json &p){
         }
         need(expectedArea>0,"VALIDATION_FAILED","Hatch holes must leave positive area");cad(hatch->evaluateHatch());double actual=0;cad(hatch->getArea(actual));
         need(std::abs(actual-expectedArea)<=std::max(1.,expectedArea)*1e-7,"VALIDATION_FAILED","Hatch loops overlap or nesting differs from outer-minus-holes");created=std::move(hatch);
-    }else if(method=="acad_create_feature_control_frame"){
-        const std::map<std::string,char> symbols={{"position",'j'},{"parallelism",'f'},{"perpendicularity",'b'},{"angularity",'a'},{"flatness",'c'},{"roundness",'e'},{"cylindricity",'g'},{"straightness",'u'},{"surface_profile",'d'},{"line_profile",'k'},{"circular_runout",'h'},{"total_runout",'t'}};
-        auto characteristic=text(p,"characteristic");need(symbols.contains(characteristic));double tolerance=annotation_number(p,"tolerance"),height=annotation_number(p,"textHeight")*f;need(tolerance>0&&height>0&&std::isfinite(height));
-        auto position=point(p,"position",f);need(position.z==0);if(p.contains("diameterZone"))need(p.at("diameterZone").is_boolean());auto condition=p.value("materialCondition",std::string("none"));need(condition=="none"||condition=="MMC"||condition=="LMC");
-        auto symbol=[](char c){return std::string("{\\Fgdt;")+c+"}";};std::string value=symbol(symbols.at(characteristic))+"%%v";
-        if(p.value("diameterZone",false))value+=symbol('n');value+=json(tolerance).dump();if(condition!="none")value+=symbol(condition=="MMC"?'m':'l');value+="%%v";
-        auto datums=p.value("datums",json::array());need(datums.is_array()&&datums.size()<=3);for(const auto &datum:datums){need(datum.is_string()&&std::regex_match(datum.get<std::string>(),std::regex("[A-Z]{1,3}")));value+="%%v"+datum.get<std::string>();}
-        auto frame=std::make_unique<AcDbFcf>(wide(value).c_str(),position,AcGeVector3d::kZAxis,AcGeVector3d::kXAxis);frame->setDimensionStyle(db->dimstyle());cad(frame->setDimscale(1));cad(frame->setDimtxt(height));created=std::move(frame);
     }else{
         need(method=="acad_create_table"&&p.contains("rows")&&p.at("rows").is_array()&&!p.at("rows").empty()&&p.at("rows").size()<=100);
         need(p.contains("columnWidths")&&p.at("columnWidths").is_array()&&!p.at("columnWidths").empty()&&p.at("columnWidths").size()<=10);
@@ -83,11 +75,6 @@ json create_detailing(AcDbDatabase *db,const std::string &method,const json &p){
             for(unsigned int col=0;col<table->numColumns();++col){double width=p.at("columnWidths")[col].get<double>()*f;need(std::abs(table->columnWidth(col)-width)<=std::max(1.,width)*1e-7,"VALIDATION_FAILED","Native table expanded a column; provide wider cells");}
             for(unsigned int row=0;row<table->numRows();++row){double height=annotation_number(p,"rowHeight")*f;need(std::abs(table->rowHeight(row)-height)<=std::max(1.,height)*1e-7,"VALIDATION_FAILED","Native table expanded a row; provide a larger row height");
                 for(unsigned int col=0;col<table->numColumns();++col)need(std::abs(table->textHeight(row,col)-annotation_number(p,"textHeight")*f)<=std::max(1.,annotation_number(p,"textHeight")*f)*1e-7,"VALIDATION_FAILED","Native table text height differs");}
-        }
-        if(auto frame=AcDbFcf::cast(e)){
-            AcDbDimStyleTableRecord settings;cad(settings.copyFrom(tx.get<AcDbDimStyleTableRecord>(db->dimstyle())));
-            cad(settings.setDimscale(1));cad(settings.setDimtxt(annotation_number(p,"textHeight")*f));
-            frame->setDimensionStyle(db->dimstyle());cad(frame->setDimstyleData(&settings));
         }
         expected=geometry(e,out);
         if(!expectedRows.is_null())need(expected.at("rows")==expectedRows,"VERIFICATION_FAILED","Table cells differ before commit");
