@@ -1,6 +1,6 @@
 # Mechanical drafting and modeling
 
-Use actual capabilities from the selected plugin; the Windows development catalog has 56 tools. Claude has not been live tested. Mac, surfaces/meshes, sheet-metal unfolding, gear/spring design and manufacturing certification remain outside the verified subset.
+Use actual capabilities from the selected plugin; the Windows development catalog has 60 tools. Claude has not been live tested. Mac, surfaces/meshes, sheet-metal unfolding, gear/spring design and manufacturing certification remain outside the verified subset.
 
 ## ISO drawing profile
 
@@ -24,13 +24,35 @@ acad_create_dimension also creates angular (two lines), angular3 (center + two p
 
 acad_create_hole_callout writes an ISO 15786-style leader note: 4× Ø6,6 with optional hole class and ×depth, counterbore ⌴Ø11×6,8, countersink ⌵Ø12×90°, or a metric thread such as M10-6H×15 / Ø8,5×20. Pass circle to have the noted diameter checked against the real hole; a mismatch is rejected. The callout layout is pending verification against the full ISO 15786 text.
 
+## Geometrical tolerancing (ISO 1101)
+
+Use acad_create_feature_control_frame with rows. Each row is one frame: a characteristic (straightness, flatness, roundness, cylindricity, line_profile, surface_profile, parallelism, perpendicularity, angularity, position, concentricity/coaxiality, symmetry, circular_runout, total_runout), a tolerance zone and up to three datum compartments. Write the tolerance value exactly as the user stated it ("0,05", "0,050"). Zone options: shape Ø/SØ, combined CZ/SZ/CZR/SIM, UZ offset, OZ/VA, derived feature Ⓐ, projected zone Ⓟ with its length, MMR Ⓜ or LMR Ⓛ with reciprocity Ⓡ, free state Ⓕ. A datum compartment is a letter, a common datum (letters A and B give A-B) and optional ISO 5459 modifiers ([CF], [PL], …) or Ⓜ/Ⓛ. Form tolerances take no datum; orientation, coaxiality/concentricity, symmetry and runout require one. Up to three rows stack independent requirements on the same feature. adjacent adds n×, UF, between A↔B or ACS/LD/MD/PD above the frame.
+
+Attach the frame with leader: the first vertex lies on the toleranced feature and AutoCAD joins the frame end facing the last bend (a native LEADER associated with the frame). For a surface, use attachment surface with the outline curve, keeping the arrow clearly away from the dimension line. For an axis or median plane, use attachment axis with the linear/aligned dimension of that feature: the arrow must sit in line with the dimension line and the first segment must run along it; both are checked. allAround draws the all-around (one circle) or all-over (two circles) symbol on the bend.
+
+Use acad_create_datum_feature for every datum letter used in a frame: vertices[0] is the datum triangle on the feature (filled or open), vertices[1] the letter frame. The same surface/axis checks apply; for an axis datum the triangle sits on the extension line in line with the dimension line and the leader runs along it. The leader and triangle are an MLEADER and the letter frame is a separate signed block insert: move or erase them together.
+
+Add acad_create_general_specification near the title block only for references the user chose: ISO 8015, ISO 2768-1 class, ISO 14405 Ⓔ, ISO 22081 general size ±deviation, ISO 22081 general geometrical specification (surface profile frame with datums) and ISO 10579-NR with its restraint condition. Never add a general tolerance by default.
+
+Ⓣ (tangent plane), intersection/orientation/direction/collection plane indicators and datum targets are not implemented: no native glyph exists for Ⓣ and the indicator shapes need the full ISO text. Modifier order, adjacent placement and symbol proportions are pending verification against the full texts; say so, and do not present a frame as engineering approval.
+
+## Sheet, title block and section views
+
+Draw the sheet with acad_create_drawing_sheet (ISO 5457 frame, 20 mm filing margin, centring marks) and put acad_create_title_block (layout education_122x31) on its titleBlockCorner. Fill only the fields the user gave: title, institution, department, scale, checkedBy, programme, number, name, idNumber, date. Leave every other field empty; never invent a name, ID, drawing number, checker or date. A value wider than its cell is rejected, so shorten it or lower textHeight. Choose projectionSymbol from the drawing's projection method; ISO E (first angle) puts the top view below and the left view right of the front view. SHX lettering such as isocp.shx has no Turkish İ, ı, Ş or Ğ, so use an arial.ttf text style for those words. Lay out the views in modelspace at the sheet scale and keep them clear of the title block.
+
+For a section view, indicate the cutting plane where it appears as a line. Draw thick short ends, a bare acad_create_leader arrow at each end pointing in the viewing direction, and the letter beside each arrow. Label the view "A-A" above it. Hatch every cut face of one part with the same ANSI31 angle and spacing. Do not hatch ribs, webs, spokes, shafts or fasteners cut lengthwise; draw their outline only (ISO 128-50). Show visible edges behind the cutting plane and leave out hidden lines in sections. Dimension a hidden feature only when no view shows it as a visible edge.
+
+For a technical PDF create the layout with plotStyle monochrome.ctb, so the layer display colours print black. Render the PDF and look at it before reporting.
+
+To cross-check complex views, model the part as a solid. Use profilePlane XZ for front-view profiles such as an inclined arm, and for holes along Y. Then compare acad_section_solid region areas with the hatched section regions of the 2D drawing.
+
 ## Measured drawings
 
 Create layers and simple center/hidden linetypes before geometry. Signed dash lengths use explicit units. TEXT/MTEXT are plain text; executable fields and formatting injection are rejected. A lineweight of 25 means 0.25 mm. Named text fonts are limited to arial.ttf/txt.shx; installed font availability can differ.
 
 Use real DIMENSION objects: linear/aligned, diameter (opposite chord endpoints), radius (center and chord), angular, arc length or ordinate. Actual measurement is never replaced by a claimed number. Explicit lower/upper tolerance deviations and user-given fit classes are supported; do not infer an ISO fit class, surface finish, thread, weld or tolerances from an image. Dimensions are non-associative: after editing the part, recheck/recreate its definition points.
 
-A native FCF accepts an explicit characteristic, tolerance, optional diameter zone/MMC/LMC and datum labels. It records the chosen annotation; it does not validate engineering selection or certify ISO compliance. FCF visual extents are unavailable because an unrendered side database does not provide stable rendered bounds; text, position, height, scale and style are verified instead. Native roughness/weld-symbol tools are not implemented. Explicit user notes can be plain MTEXT and must be described as notes.
+A native FCF records the chosen annotation; it does not validate engineering selection or certify ISO compliance. FCF visual extents are unavailable because an unrendered side database does not provide stable rendered bounds; text, position, height, scale and style are verified instead. Native surface-texture and weld-symbol tools are not implemented yet. Explicit user notes can be plain MTEXT and must be described as notes.
 
 ## Repeated parts and BOM
 
